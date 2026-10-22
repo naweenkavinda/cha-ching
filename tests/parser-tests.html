@@ -44,9 +44,9 @@
   var CASES = [
     { name: 'Sri Lankan supermarket (net total, cash, balance)', text: T([
       'KEELLS SUPER',
-      'No. 45, Galle Road, Colombo 03',
-      'Tel: 011 2345678',
-      'VAT Reg No: 114567890-7000',
+      'No. 45, Sample Road, Colombo 03',
+      'Tel: 011 0000000',
+      'VAT Reg No: 100000000-7000',
       'TAX INVOICE',
       'Date: 21/10/2026  Time: 18:42',
       'Bill No: 004512',
@@ -69,8 +69,8 @@
     { name: 'Fuel station (amount due, change)', text: T([
       'LANKA IOC PLC',
       'IOC FILLING STATION - KOTTAWA',
-      'Dealer: Perera Fuel Mart',
-      'Tel 011-2781234',
+      'Dealer: Sample Fuel Mart',
+      'Tel 011-0000000',
       'Dt: 22-10-2026 07:15',
       'Pump No: 03  Nozzle: 2',
       'Product: PETROL 92 OCTANE',
@@ -83,8 +83,8 @@
 
     { name: 'Pharmacy (grand total, card slip)', text: T([
       'Healthguard Pharmacy',
-      'Union Place, Colombo 02',
-      'Hotline: 0117 555 555',
+      'Sample Place, Colombo 02',
+      'Hotline: 011 000 0000',
       'INVOICE #: HG-22145',
       '22.10.2026   10:05 AM',
       'Panadol 500mg x 2      260.00',
@@ -98,10 +98,10 @@
     ]), expect: { date: '2026-10-22', shop: 'Healthguard Pharmacy', amount: 1590, currency: 'LKR', category: 'Health' } },
 
     { name: 'Restaurant with service charge + VAT', text: T([
-      'THE GALLERY CAFE',
-      '2 Alfred House Rd, Colombo 03',
-      'Tel: +94 11 2582162',
-      'Table: 12   Pax: 2   Server: Kamal',
+      'THE GARDEN CAFE',
+      '1 Sample Rd, Colombo 03',
+      'Tel: +94 11 0000000',
+      'Table: 12   Pax: 2   Server: 04',
       'Date: 20/10/2026  20:15',
       '1 Chicken Kottu          1,850.00',
       '2 Lime Juice x 2           900.00',
@@ -111,7 +111,7 @@
       'VAT 18%                    693.00',
       'TOTAL (Incl. Taxes)  Rs 4,543.00',
       'Card Payment             4,543.00'
-    ]), expect: { date: '2026-10-20', shop: 'The Gallery Cafe', amount: 4543, currency: 'LKR', category: 'Food & Dining' } },
+    ]), expect: { date: '2026-10-20', shop: 'The Garden Cafe', amount: 4543, currency: 'LKR', category: 'Food & Dining' } },
 
     { name: 'Utility bill payment (header line skipped, ISO date)', text: T([
       '*** CUSTOMER COPY ***',
@@ -145,7 +145,7 @@
       'TESCO',
       'Express',
       'Kensington High St London W8',
-      'VAT No. GB 220 4302 31',
+      'VAT No. GB 000 0000 00',
       'Sandwich Meal Deal     £3.85',
       'Coca Cola 500ml        £1.65',
       'Walkers Crisps         £0.95',
@@ -171,8 +171,8 @@
     { name: 'Subtotal, savings, cash tendered and change must not win', text: T([
       'CARGILLS FOOD CITY',
       'Kirulapone',
-      'No. 12, High Level Rd, Colombo 06',
-      'Cashier: Nimali   POS 03',
+      'No. 12, Sample Rd, Colombo 06',
+      'Cashier: 07   POS 03',
       'Date 18/10/2026 Time 11:20',
       'SUGAR 1KG            2 x 290.00     580.00',
       'WHITE BREAD                         180.00',
@@ -223,7 +223,7 @@
     { name: 'India, rupee symbol, GST, 05-Oct-2026', text: T([
       'CHAI POINT',
       'Indiranagar, Bengaluru',
-      'GSTIN: 29AABCC1234D1Z5',
+      'GSTIN: 29AAAAA0000A1Z5',
       'Bill No: CP-88213   Date: 05-Oct-2026',
       'Masala Chai x 2        ₹ 120.00',
       'Samosa x 2             ₹ 80.00',
@@ -246,7 +246,7 @@
     { name: 'Singapore S$, "Oct 21, 2026"', text: T([
       'TOAST BOX',
       'Raffles City #B1-20',
-      'GST Reg No: 201234567K',
+      'GST Reg No: 200000000K',
       'Oct 21, 2026  12:10',
       'Kaya Toast Set       S$ 5.80',
       'Teh C                S$ 1.90',
@@ -259,7 +259,7 @@
       'TAX INVOICE',
       'CARREFOUR',
       'City Centre Deira, Dubai',
-      'TRN: 100234567800003',
+      'TRN: 100000000000003',
       '22/10/2026 19:05',
       'Water 1.5L x 6        AED 9.75',
       'Basmati Rice 5kg      AED 40.01',
@@ -311,7 +311,7 @@
     { name: 'Australia A$, amount on line after TOTAL', text: T([
       'Woolworths',
       'Bondi Junction NSW 2022',
-      'ABN 88 000 014 675',
+      'ABN 00 000 000 000',
       'Fresh Milk 2L          A$ 3.10',
       'Avocado x 3            A$ 4.50',
       'TOTAL',
