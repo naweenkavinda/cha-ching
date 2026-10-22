@@ -555,9 +555,44 @@
       fab.style.top = y + 'px';
       fab.style.right = 'auto';
       fab.style.bottom = 'auto';
+      return [x, y];
     };
     const saved = settings.get('fabPos', null);
     if (saved && typeof saved.fx === 'number') place(saved.fx * window.innerWidth, saved.fy * window.innerHeight);
+    const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let px = null, py = 0, vx = 0, vy = 0, tx = 0, ty = 0, last = 0;
+    const pickTarget = () => {
+      tx = M + Math.random() * Math.max(1, window.innerWidth - SIZE - 2 * M);
+      ty = M + Math.random() * Math.max(1, window.innerHeight - TB - SIZE - 2 * M);
+    };
+    const frame = (t) => {
+      requestAnimationFrame(frame);
+      const dt = Math.min(0.05, (t - last) / 1000 || 0);
+      last = t;
+      if (reduced || document.hidden || document.body.dataset.screen !== 'home') { px = null; return; }
+      if (drag) { px = null; return; }
+      if (px === null) {
+        const r = fab.getBoundingClientRect();
+        px = parseFloat(fab.style.left);
+        py = parseFloat(fab.style.top);
+        if (!isFinite(px)) { px = r.left; py = r.top; }
+        pickTarget();
+      }
+      const dx = tx - px, dy = ty - py, dist = Math.hypot(dx, dy);
+      if (dist < 24) pickTarget();
+      const sp = 34;
+      const wx = Math.cos(t / 1300) * 16, wy = Math.sin(t / 900) * 18;
+      const wantX = (dx / (dist || 1)) * sp + wx, wantY = (dy / (dist || 1)) * sp + wy;
+      const k = Math.min(1, dt * 1.4);
+      vx += (wantX - vx) * k;
+      vy += (wantY - vy) * k;
+      const p = place(px + vx * dt, py + vy * dt);
+      if (p[0] !== px + vx * dt || p[1] !== py + vy * dt) { pickTarget(); vx *= -0.4; vy *= -0.4; }
+      px = p[0];
+      py = p[1];
+      fab.style.rotate = Math.max(-14, Math.min(14, vx * 0.35)) + 'deg';
+    };
+    requestAnimationFrame(frame);
     fab.addEventListener('pointerdown', (e) => {
       const r = fab.getBoundingClientRect();
       drag = { id: e.pointerId, sx: e.clientX, sy: e.clientY, ox: r.left, oy: r.top };
