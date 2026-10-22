@@ -5,147 +5,256 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Receipt Snap</title>
 <meta name="description" content="Snap a receipt, read it on your device and keep a simple expense sheet. Works offline. Nothing leaves your phone.">
-<meta name="color-scheme" content="light dark">
-<meta name="theme-color" content="#4f46e5" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#181c2e" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0B0B0C">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="Receipt Snap">
 <meta name="format-detection" content="telephone=no">
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
 <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600&family=Zilla+Slab:wght@500;700&display=swap" rel="stylesheet">
+<script>try{if(JSON.parse(localStorage.getItem('receipt-snap.theme'))==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
+<link rel="stylesheet" href="./css/theme.css">
 <link rel="stylesheet" href="./css/style.css">
 </head>
-<body>
+<body data-screen="capture">
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-receipt" viewBox="0 0 24 24"><path d="M5 3h14v18l-2.3-1.5L14.3 21 12 19.5 9.7 21l-2.4-1.5L5 21z"/><path d="M9 8h6M9 12h6M9 16h3"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11l8-7 8 7M6 10v10h12V10M10 20v-5h4v5"/></symbol>
   <symbol id="i-camera" viewBox="0 0 24 24"><path d="M3 8.5A2.5 2.5 0 0 1 5.5 6h1.8l1.6-2h6.2l1.6 2h1.8A2.5 2.5 0 0 1 21 8.5v9a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/><circle cx="12" cy="13" r="3.5"/></symbol>
-  <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 15.5l-5-5L5.5 20"/></symbol>
   <symbol id="i-scan" viewBox="0 0 24 24"><path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16M8 12h8"/></symbol>
   <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/></symbol>
   <symbol id="i-settings" viewBox="0 0 24 24"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></symbol>
-  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
   <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
   <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></symbol>
   <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15V4M7 9l5-5 5 5M5 20h14"/></symbol>
   <symbol id="i-share" viewBox="0 0 24 24"><path d="M12 3v12M8 7l4-4 4 4M7 11H5v10h14V11h-2"/></symbol>
-  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
   <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></symbol>
   <symbol id="i-install" viewBox="0 0 24 24"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M12 7v7M9 11l3 3 3-3"/></symbol>
 </svg>
 
 <header class="topbar">
   <div class="topbar-in">
-    <svg class="logo" aria-hidden="true"><use href="#i-receipt"/></svg>
-    <span>Receipt Snap</span>
+    <div class="brand">Receipt Snap</div>
+    <div class="top-right">
+      <div id="postmark" class="postmark" role="img" aria-label="Today"><span id="pm-mon">OCT</span><span id="pm-day">22</span></div>
+      <span id="top-label" class="top-label" hidden></span>
+    </div>
   </div>
 </header>
 
 <main id="main">
-  <section id="view-scan" class="view" aria-labelledby="scan-h">
-    <div id="capture" class="capture">
-      <div class="capture-hero">
-        <svg class="hero-icon" aria-hidden="true"><use href="#i-receipt"/></svg>
-        <h1 id="scan-h">Scan a receipt</h1>
-        <p class="muted">Lay the receipt flat in good light. The text is read right here on your device.</p>
+  <section id="view-welcome" class="view" aria-labelledby="wel-h" hidden>
+    <div id="wel-form-wrap" class="screen">
+      <div class="stamp paper wel-card">
+        <p class="lbl">NEW HERE</p>
+        <h1 id="wel-h" class="big">Sign in with your phone number</h1>
+        <form id="welcome-form" class="wel-form" novalidate>
+          <label class="lbl" for="w-name">YOUR NAME (OPTIONAL)</label>
+          <input id="w-name" class="line-in" type="text" maxlength="40" autocomplete="given-name" autocapitalize="words" placeholder="First name">
+          <label class="lbl" for="w-phone">PHONE NUMBER</label>
+          <input id="w-phone" class="line-in" type="tel" inputmode="tel" autocomplete="tel" maxlength="24" placeholder="+94 77 000 0000">
+          <button type="submit" class="btn btn-primary">Continue</button>
+        </form>
+        <p class="small-note">Saved only on this phone. No code is sent, the number is not checked and nothing is uploaded.</p>
       </div>
-      <input id="file-camera" class="sr-only" type="file" accept="image/*" capture="environment">
-      <label for="file-camera" class="btn btn-primary btn-big"><svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg>Take photo</label>
-      <input id="file-upload" class="sr-only" type="file" accept="image/*">
-      <label for="file-upload" class="btn btn-big"><svg class="ic" aria-hidden="true"><use href="#i-image"/></svg>Upload photo</label>
+    </div>
+    <div id="wel-done" class="screen" hidden>
+      <div class="stamp paper wel-card">
+        <p class="lbl">WELCOME</p>
+        <h1 id="wel-name" class="big"></h1>
+        <p>Snap a receipt and your expense sheet fills itself in. Everything stays on this phone.</p>
+        <button type="button" id="btn-start" class="btn btn-primary">Start</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="view-home" class="view" aria-labelledby="home-h" hidden>
+    <p id="home-date" class="lbl"></p>
+    <h1 id="home-h" class="big home-h">Hello</h1>
+    <div class="stamp paper summary">
+      <p id="home-count" class="lbl">TODAY</p>
+      <div id="home-totals" class="totals"></div>
+    </div>
+    <div id="home-rows-lbl" class="lbl lbl-g sheet-lbl">TODAY'S ENTRIES</div>
+    <div id="home-rows" class="sheet"></div>
+    <div class="theme-row">
+      <span class="lbl lbl-g">THEME</span>
+      <div class="seg" role="group" aria-label="Theme">
+        <button type="button" id="th-dark" aria-pressed="true">Dark</button>
+        <button type="button" id="th-light" aria-pressed="false">Light</button>
+      </div>
+    </div>
+    <div class="home-actions">
+      <button type="button" id="btn-home-scan" class="btn btn-primary">Scan a receipt</button>
+      <a id="btn-invite" class="btn" target="_blank" rel="noopener noreferrer" href="https://wa.me/">Invite a friend on WhatsApp</a>
+    </div>
+  </section>
+
+  <section id="view-scan" class="view" aria-labelledby="scan-h" hidden>
+    <h1 id="scan-h" class="sr-only">Scan a receipt</h1>
+
+    <div id="capture" class="screen">
+      <div class="stamp viewfinder">
+        <div id="vf" class="vf-frame">
+          <video id="cam" playsinline muted autoplay aria-label="Camera preview"></video>
+          <div class="ph" aria-hidden="true">
+            <div class="ph-receipt">
+              <i class="ph-c" style="width:92px;height:9px;background:var(--ph-mid)"></i>
+              <i class="ph-c" style="width:112px;height:5px;background:var(--ph-line);margin-bottom:6px"></i>
+              <div class="ph-row"><i style="width:78px"></i><i style="width:30px"></i></div>
+              <div class="ph-row"><i style="width:60px"></i><i style="width:30px"></i></div>
+              <div class="ph-row"><i style="width:90px"></i><i style="width:34px"></i></div>
+              <div class="ph-row"><i style="width:50px"></i><i style="width:28px"></i></div>
+              <div class="ph-rule"></div>
+              <div class="ph-row ph-total"><i style="width:44px"></i><i style="width:50px"></i></div>
+            </div>
+          </div>
+          <div class="flash"></div>
+        </div>
+      </div>
+      <p id="cam-caption" class="caption" aria-live="polite">Keep the receipt inside the stamp.</p>
+      <div class="controls">
+        <div class="c-left">
+          <input id="file-upload" class="sr-only" type="file" accept="image/*">
+          <label for="file-upload" class="btn btn-sm">Upload</label>
+        </div>
+        <button type="button" id="btn-snap" class="shutter" aria-label="Take photo"><span>SNAP</span></button>
+        <div class="c-right"><button type="button" id="btn-sheet" class="btn btn-sm">Sheet</button></div>
+      </div>
+      <input id="file-camera" class="sr-only" type="file" accept="image/*" capture="environment" tabindex="-1">
       <button type="button" id="btn-manual" class="btn-link">Add without photo</button>
-      <p class="drop-hint muted small">On a computer you can also drop or paste an image here.</p>
     </div>
 
-    <div id="work" hidden>
-      <figure id="preview" class="preview" hidden><img id="preview-img" alt="Receipt photo"></figure>
-      <div id="progress" class="card progress" hidden>
-        <div id="progress-bar" class="progress-track" role="progressbar" aria-label="Scan progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="progress-fill" class="progress-fill"></div></div>
-        <p id="progress-text" class="progress-text" aria-live="polite"></p>
+    <div id="work" class="screen" hidden>
+      <div id="reading" class="reading" hidden>
+        <div class="stamp viewfinder">
+          <figure id="preview" class="vf-frame" hidden><img id="preview-img" alt="Receipt photo"></figure>
+        </div>
+        <div id="progress" class="progress">
+          <div id="progress-bar" class="progress-track" role="progressbar" aria-label="Scan progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="progress-fill" class="progress-fill"></div></div>
+          <p id="progress-text" class="progress-text" aria-live="polite"></p>
+        </div>
       </div>
-      <form id="form" class="card form" hidden novalidate autocomplete="off">
-        <h2 id="form-title">Check the details</h2>
-        <p id="form-hint" class="hint" hidden></p>
-        <label class="field"><span>Date</span><input id="f-date" type="date" required></label>
-        <label class="field"><span>Shop</span><input id="f-shop" type="text" maxlength="120" placeholder="Shop or merchant" autocapitalize="words" enterkeyhint="next"></label>
-        <div class="row">
-          <label class="field"><span>Amount</span><input id="f-amount" type="text" inputmode="decimal" placeholder="0.00" required enterkeyhint="next"></label>
-          <label class="field"><span>Currency</span><select id="f-currency"></select></label>
+
+      <form id="form" class="review" hidden novalidate autocomplete="off">
+        <h2 id="form-title" class="sr-only">Check the details</h2>
+        <p id="form-hint" class="notice" hidden></p>
+        <div class="stamp paper">
+          <div id="seal" class="seal" aria-hidden="true">
+            <div class="seal-in"><span id="seal-cat" class="seal-cat"></span><span id="seal-date" class="seal-date"></span></div>
+          </div>
+          <div class="fld fld-shop" data-f="shop">
+            <label class="lbl" for="f-shop">SHOP</label>
+            <textarea id="f-shop" class="shop-in" rows="1" maxlength="120" placeholder="Tap to add the shop" autocapitalize="words" enterkeyhint="next"></textarea>
+          </div>
+          <hr class="rule">
+          <div class="fld" data-f="amount">
+            <label class="lbl" for="f-amount">AMOUNT</label>
+            <div class="amount-row">
+              <span class="cur"><span id="cur-sym" class="cur-sym">Rs</span><select id="f-currency" aria-label="Currency"></select></span>
+              <input id="f-amount" class="amt-in" type="text" inputmode="decimal" placeholder="0.00" required enterkeyhint="done">
+            </div>
+            <span id="amt-measure" class="amt-measure" aria-hidden="true"></span>
+          </div>
+          <hr class="rule">
+          <div class="date-row">
+            <div class="fld" data-f="date">
+              <label class="lbl" for="f-date">DATE</label>
+              <div class="date-val"><span id="date-text" class="date-text"></span><input id="f-date" type="date" required></div>
+            </div>
+            <span class="cat-btn">Change category<select id="f-category" aria-label="Category"></select></span>
+          </div>
         </div>
-        <label class="field"><span>Category</span><select id="f-category"></select></label>
-        <label class="field"><span>Note <em>(optional)</em></span><textarea id="f-note" rows="2" maxlength="500"></textarea></label>
-        <details id="raw" class="raw" hidden><summary>Show scanned text</summary><pre id="raw-text"></pre></details>
+
+        <details id="more" class="more">
+          <summary>Note and scanned text</summary>
+          <label class="more-f"><span class="lbl lbl-g">NOTE (OPTIONAL)</span><textarea id="f-note" rows="2" maxlength="500"></textarea></label>
+          <div id="raw" hidden><span class="lbl lbl-g">SCANNED TEXT</span><pre id="raw-text"></pre></div>
+        </details>
+
+        <div class="lbl lbl-g sheet-lbl">SHEET, LATEST ROWS</div>
+        <div id="sheet-rows" class="sheet"></div>
+
+        <button type="button" id="btn-delete" class="btn-link link-danger" hidden>Delete this entry</button>
+
         <div class="actions">
-          <button type="submit" id="btn-save" class="btn btn-primary"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>Save expense</button>
-          <button type="button" id="btn-discard" class="btn">Discard</button>
+          <button type="button" id="btn-discard" class="btn">Retake</button>
+          <button type="submit" id="btn-save" class="btn btn-primary">Add to sheet</button>
         </div>
-        <button type="button" id="btn-delete" class="btn btn-quiet-danger" hidden><svg class="ic" aria-hidden="true"><use href="#i-trash"/></svg>Delete expense</button>
       </form>
     </div>
   </section>
 
   <section id="view-expenses" class="view" aria-labelledby="exp-h" hidden>
     <div class="view-head">
-      <h1 id="exp-h">Expenses</h1>
+      <h1 id="exp-h">Sheet</h1>
       <label id="month-wrap" class="month"><span class="sr-only">Month</span><select id="month"></select></label>
     </div>
-    <div id="summary" class="card summary" hidden>
-      <p id="summary-count" class="muted small"></p>
+    <div id="summary" class="stamp paper summary" hidden>
+      <p id="summary-count" class="lbl"></p>
       <div id="totals" class="totals"></div>
     </div>
     <ul id="list" class="list"></ul>
     <div id="empty" class="empty" hidden>
-      <svg class="hero-icon" aria-hidden="true"><use href="#i-receipt"/></svg>
-      <h2>No expenses yet</h2>
-      <p class="muted">Scan your first receipt and it will show up here.</p>
-      <button type="button" id="btn-first" class="btn btn-primary"><svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg>Scan a receipt</button>
+      <h2>No entries yet</h2>
+      <p>Scan your first receipt and it will be added to the sheet.</p>
+      <button type="button" id="btn-first" class="btn btn-primary">Scan a receipt</button>
     </div>
   </section>
 
   <section id="view-settings" class="view" aria-labelledby="set-h" hidden>
-    <h1 id="set-h">Settings</h1>
-    <div class="card">
-      <label class="field field-last"><span>Default currency</span><select id="s-currency"></select></label>
+    <div class="view-head"><h1 id="set-h">Settings</h1></div>
+    <div class="sec">
+      <label class="lbl lbl-g" for="s-currency">DEFAULT CURRENCY</label>
+      <select id="s-currency" class="sel"></select>
     </div>
-    <div class="card stack">
+    <div class="sec">
       <h2>Export</h2>
-      <label class="field field-last"><span>Expenses to include</span><select id="export-scope"><option value="filter">Current month filter</option><option value="all">All expenses</option></select></label>
-      <button type="button" id="btn-csv" class="btn"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg>Export CSV</button>
-      <p class="muted small">Opens in Excel, Numbers or Google Sheets.</p>
+      <label class="lbl lbl-g" for="export-scope">EXPENSES TO INCLUDE</label>
+      <select id="export-scope" class="sel"><option value="filter">Current month filter</option><option value="all">All expenses</option></select>
+      <button type="button" id="btn-csv" class="btn">Export CSV</button>
+      <p class="note">Opens in Excel, Numbers or Google Sheets.</p>
     </div>
-    <div class="card stack">
+    <div class="sec">
       <h2>Backup</h2>
-      <button type="button" id="btn-backup" class="btn"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg>Export JSON backup</button>
+      <button type="button" id="btn-backup" class="btn">Export JSON backup</button>
       <input id="file-import" class="sr-only" type="file" accept="application/json,.json">
-      <label for="file-import" class="btn"><svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg>Import JSON backup</label>
-      <p class="muted small">A backup holds every expense with its thumbnail. Importing adds to what is already here.</p>
+      <label for="file-import" class="btn">Import JSON backup</label>
+      <p class="note">A backup holds every expense with its thumbnail. Importing adds to what is already here.</p>
     </div>
-    <div id="install-card" class="card stack" hidden>
+    <div id="install-card" class="sec" hidden>
       <h2>Install</h2>
-      <button type="button" id="btn-install" class="btn btn-primary" hidden><svg class="ic" aria-hidden="true"><use href="#i-install"/></svg>Install app</button>
-      <p id="ios-hint" class="install-hint" hidden>Tap <strong>Share</strong> <svg class="ic ic-inline" aria-hidden="true"><use href="#i-share"/></svg> then <strong>Add to Home Screen</strong> to use Receipt Snap like an app.</p>
+      <button type="button" id="btn-install" class="btn btn-primary" hidden>Install app</button>
+      <p id="ios-hint" class="note" hidden>Tap <strong>Share</strong> <svg class="ic ic-inline" aria-hidden="true"><use href="#i-share"/></svg> then <strong>Add to Home Screen</strong> to use Receipt Snap like an app.</p>
     </div>
-    <div class="card privacy">
-      <svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg>
-      <div>
-        <h2>Everything stays on this device</h2>
-        <p class="muted small">Photos are read by a text reader running inside your browser and are never uploaded. Expenses are stored only in this browser. The reader (a few MB) is downloaded once on your first scan, after that scanning works offline.</p>
-      </div>
+    <div class="sec">
+      <h2>Everything stays on this device</h2>
+      <p class="note">Photos are read by a text reader running inside your browser and are never uploaded. Expenses are stored only in this browser. The reader (a few MB) is downloaded once on your first scan, after that scanning works offline.</p>
     </div>
-    <div class="card stack">
+    <div id="profile-card" class="sec" hidden>
+      <h2>Your details</h2>
+      <p id="profile-text" class="note"></p>
+      <button type="button" id="btn-signout" class="btn">Remove my details</button>
+    </div>
+    <div class="sec">
       <h2>Data</h2>
-      <button type="button" id="btn-clear" class="btn btn-danger"><svg class="ic" aria-hidden="true"><use href="#i-trash"/></svg>Clear all data</button>
+      <button type="button" id="btn-clear" class="btn btn-danger">Clear all data</button>
     </div>
-    <p class="muted small credit">Part of my portfolio: <a href="https://naweenkavinda.github.io/portfolio/">naweenkavinda.github.io/portfolio</a></p>
+    <p class="note credit">Part of my portfolio: <a href="https://naweenkavinda.github.io/portfolio/">naweenkavinda.github.io/portfolio</a></p>
   </section>
 </main>
 
 <nav class="tabbar" aria-label="Main">
   <div class="tabbar-in">
-    <button type="button" class="tab" data-view="scan" aria-current="page"><svg class="ic" aria-hidden="true"><use href="#i-scan"/></svg><span>Scan</span></button>
-    <button type="button" class="tab" data-view="expenses"><svg class="ic" aria-hidden="true"><use href="#i-list"/></svg><span>Expenses</span></button>
+    <button type="button" class="tab" data-view="home"><svg class="ic" aria-hidden="true"><use href="#i-home"/></svg><span>Home</span></button>
+    <button type="button" class="tab" data-view="scan"><svg class="ic" aria-hidden="true"><use href="#i-scan"/></svg><span>Scan</span></button>
+    <button type="button" class="tab" data-view="expenses"><svg class="ic" aria-hidden="true"><use href="#i-list"/></svg><span>Sheet</span></button>
     <button type="button" class="tab" data-view="settings"><svg class="ic" aria-hidden="true"><use href="#i-settings"/></svg><span>Settings</span></button>
   </div>
 </nav>
@@ -157,6 +266,7 @@
 <script src="js/parser.js"></script>
 <script src="js/db.js"></script>
 <script src="js/ocr.js"></script>
+<script src="js/camera.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

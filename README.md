@@ -11,11 +11,13 @@ Photograph or upload a receipt and the expense sheet fills itself in: date, shop
 - Lets you check and edit every field before saving, or add an expense without a photo
 - Keeps an expense sheet with a month filter and per-currency totals
 - Exports to CSV for Excel or Google Sheets, plus a JSON backup you can import again
-- Works offline after the first scan, with light and dark themes and smooth page and button animations
+- Live camera viewfinder in a postage-stamp frame (falls back to the phone's camera app), plus a Home page with today's summary
+- Start page that saves your name and phone number on the device only (no code is sent and the number is not verified), a WhatsApp invite button, and light and dark themes
+- Works offline after the first scan, with smooth page and button animations
 
 ## Notes and limits
 
-- Everything stays on your device. Photos are never uploaded and there are no accounts or servers.
+- Everything stays on your device. Photos are never uploaded and there are no accounts or servers. The only third-party requests are the Tesseract.js files from jsDelivr and the Zilla Slab and Libre Franklin fonts from Google Fonts, both cached for offline use.
 - The free on-device reader handles clear printed receipts well. Faded thermal paper or crumpled receipts may need a few fixes before saving.
 - Expenses live in this browser only, so export a backup before clearing browser data or switching phones.
 

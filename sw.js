@@ -1,13 +1,15 @@
-const VERSION = 'v2';
+const VERSION = 'v4';
 const SHELL = 'receipt-snap-shell-' + VERSION;
 const CDN = 'receipt-snap-cdn-v1';
 const ASSETS = [
   './',
   './index.html',
+  './css/theme.css',
   './css/style.css',
   './js/parser.js',
   './js/db.js',
   './js/ocr.js',
+  './js/camera.js',
   './js/app.js',
   './manifest.webmanifest',
   './icons/icon-192.png',
@@ -35,7 +37,7 @@ self.addEventListener('fetch', (e) => {
   if (url.origin === self.location.origin) {
     if (url.pathname.indexOf(new URL(self.registration.scope).pathname) !== 0) return;
     e.respondWith(fromShell(req, e));
-  } else if (url.hostname === 'cdn.jsdelivr.net') {
+  } else if (url.hostname === 'cdn.jsdelivr.net' || url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com') {
     e.respondWith(fromCdn(req));
   }
 });

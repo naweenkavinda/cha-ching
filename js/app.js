@@ -126,8 +126,13 @@
     navigator.storage.persist().catch(() => {});
   }
 
-  const VIEWS = ['scan', 'expenses', 'settings'];
-  const ROLL_SEL = '.view-head, .card, .preview, .capture > *, .list > li, .empty';
+  const VIEWS = ['welcome', 'home', 'scan', 'expenses', 'settings'];
+  const ROLL_SEL = '.stamp, .notice, .caption, .controls, .actions, .sheet-row, .view-head, .sec, .progress, .home-h, #home-date, .theme-row, .home-actions, .list > li, .empty';
+  const SYMBOLS = { LKR: 'Rs', USD: '$', EUR: '€', GBP: '£', INR: '₹', AUD: 'A$', SGD: 'S$', AED: 'AED' };
+  const ymdDate = (s) => { const p = s.split('-').map(Number); return new Date(p[0], p[1] - 1, p[2]); };
+  const fmtLong = (s) => (isYMD(s) ? ymdDate(s).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '');
+  const fmtSeal = (s) => (isYMD(s) ? ymdDate(s).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).toUpperCase() : 'NO DATE');
+  const fmtShort = (s) => (isYMD(s) ? ymdDate(s).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—');
 
   function replay(node, cls) {
     node.classList.remove(cls);
@@ -157,8 +162,11 @@
       if (b.dataset.view === (tab || view)) b.setAttribute('aria-current', 'page');
       else b.removeAttribute('aria-current');
     });
+    if (view === 'home') renderHome();
     if (view === 'expenses') renderExpenses();
     if (view === 'settings') renderSettings();
+    setScreen();
+    syncCam();
     window.scrollTo(0, 0);
     const to = VIEWS.indexOf(view);
     if (from !== to) {
@@ -168,15 +176,146 @@
     }
   }
 
+  function entryNo() {
+    if (state.editing) {
+      const order = state.all.slice().sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+      const i = order.findIndex((r) => r.id === state.editing.id);
+      return i >= 0 ? i + 1 : state.all.length;
+    }
+    return state.all.length + 1;
+  }
+
+  function setScreen() {
+    const v = VIEWS.find((n) => !$('view-' + n).hidden) || 'scan';
+    const s = v === 'scan' ? (state.mode === 'review' ? 'review' : state.mode === 'reading' ? 'reading' : 'capture') : v;
+    document.body.dataset.screen = s;
+    const label = $('top-label');
+    label.hidden = s !== 'review';
+    if (s === 'review') label.textContent = 'ENTRY ' + entryNo();
+  }
+
+  function syncCam() {
+    const want = state.mode === 'idle' && !$('view-scan').hidden && !document.hidden;
+    if (!want) { Cam.stop(); return; }
+    if (Cam.autostart()) Cam.start();
+  }
+
+  function updateCaption() {
+    const s = Cam.state();
+    $('cam-caption').textContent = s === 'on' ? 'Keep the receipt inside the stamp.' : s === 'idle' ? 'Tap SNAP to turn on the camera.' : 'Camera is off. SNAP opens your camera app.';
+  }
+
+  async function onSnap() {
+    if (state.busy) { toast('Still reading the last photo…'); return; }
+    const st = Cam.state();
+    if (st === 'on') {
+      const f = await Cam.capture();
+      if (f) {
+        const vf = $('vf');
+        vf.classList.remove('shot');
+        vf.getBoundingClientRect();
+        vf.classList.add('shot');
+        setTimeout(() => vf.classList.remove('shot'), 450);
+        handleFile(f);
+        return;
+      }
+    } else if (st === 'idle') {
+      await Cam.start();
+      if (Cam.state() === 'on') return;
+    }
+    $('file-camera').click();
+  }
+
   function setMode(mode) {
     const changed = state.mode !== mode;
     state.mode = mode;
     $('capture').hidden = mode !== 'idle';
     $('work').hidden = mode === 'idle';
-    $('work').classList.toggle('is-review', mode === 'review');
-    $('progress').hidden = mode !== 'reading';
+    $('reading').hidden = mode !== 'reading';
     $('form').hidden = mode !== 'review';
+    setScreen();
+    syncCam();
+    if (mode === 'review') refreshReview();
     if (changed) roll($('view-scan'));
+  }
+
+  function setUnread(name, on) {
+    const f = document.querySelector('#form .fld[data-f="' + name + '"]');
+    if (f) f.classList.toggle('unread', !!on);
+    if (state.hintFlagged && !document.querySelector('#form .fld.unread')) {
+      state.hintFlagged = false;
+      $('form-hint').textContent = 'All details filled in. Check them before adding.';
+    }
+  }
+
+  function autogrow() {
+    const t = $('f-shop');
+    t.style.height = 'auto';
+    t.style.height = t.scrollHeight + 'px';
+  }
+
+  function fitAmount() {
+    const inp = $('f-amount');
+    const m = $('amt-measure');
+    const avail = inp.clientWidth;
+    if (!avail) return;
+    m.textContent = inp.value || inp.placeholder || '0.00';
+    let size = 54;
+    m.style.fontSize = size + 'px';
+    while (size > 24 && m.offsetWidth > avail - 2) { size -= 2; m.style.fontSize = size + 'px'; }
+    inp.style.fontSize = size + 'px';
+  }
+
+  function fitSeal() {
+    const c = $('seal-cat');
+    let size = 20;
+    c.style.fontSize = size + 'px';
+    while (size > 9 && (c.scrollWidth > c.clientWidth + 1 || c.scrollHeight > 48)) { size -= 1; c.style.fontSize = size + 'px'; }
+  }
+
+  function updateSym() {
+    const c = $('f-currency').value;
+    $('cur-sym').textContent = SYMBOLS[c] || c;
+  }
+
+  function updateDateText() {
+    const t = $('date-text');
+    const v = $('f-date').value;
+    if (isYMD(v)) { t.textContent = fmtLong(v); t.classList.remove('is-empty'); }
+    else { t.textContent = 'Tap to set the date'; t.classList.add('is-empty'); }
+  }
+
+  function updateSeal() {
+    $('seal-cat').textContent = $('f-category').value;
+    $('seal-date').textContent = fmtSeal($('f-date').value);
+    fitSeal();
+  }
+
+  function renderSheet() {
+    const box = $('sheet-rows');
+    const editingId = state.editing ? state.editing.id : null;
+    const saved = state.all.filter((r) => r.id !== editingId).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)).slice(-2);
+    const cur = $('f-currency').value;
+    const amt = parseAmount($('f-amount').value);
+    const rows = saved.concat([{ date: $('f-date').value, shop: $('f-shop').value.trim(), amount: amt, currency: cur }]);
+    box.textContent = '';
+    rows.forEach((r, i) => {
+      const num = typeof r.amount === 'number' && isFinite(r.amount) ? numFmt.format(r.amount) + (r.currency && r.currency !== cur ? ' ' + r.currency : '') : '—';
+      box.appendChild(el('div', { class: 'sheet-row' + (i === rows.length - 1 ? ' is-new' : '') }, [
+        el('span', { text: fmtShort(r.date) }),
+        el('span', { text: r.shop || '—' }),
+        el('span', { class: 'amt', text: num })
+      ]));
+    });
+  }
+
+  function refreshReview() {
+    updateSym();
+    updateDateText();
+    updateSeal();
+    renderSheet();
+    autogrow();
+    fitAmount();
   }
 
   function setPreview(src, isObjectUrl) {
@@ -198,6 +337,57 @@
     $('form').reset();
     setPreview(null);
     setMode('idle');
+  }
+
+  const APP_URL = 'https://naweenkavinda.github.io/receipt-snap/';
+
+  function renderHome() {
+    const p = settings.get('profile', null);
+    const now = new Date();
+    const h = now.getHours();
+    $('home-h').textContent = (h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening') + (p && p.name ? ', ' + p.name : '');
+    $('home-date').textContent = now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }).toUpperCase();
+    const rows = state.all.filter((r) => r.date === today()).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    const totals = {};
+    rows.forEach((r) => { if (typeof r.amount === 'number' && isFinite(r.amount)) totals[r.currency] = (totals[r.currency] || 0) + r.amount; });
+    $('home-count').textContent = rows.length ? 'TODAY \u00b7 ' + rows.length + (rows.length === 1 ? ' ENTRY' : ' ENTRIES') : 'TODAY';
+    const tb = $('home-totals');
+    tb.textContent = '';
+    if (!rows.length) tb.appendChild(el('p', { class: 'none', text: 'Nothing spent yet today.' }));
+    Object.keys(totals).sort((a, b) => totals[b] - totals[a]).forEach((c) => {
+      tb.appendChild(el('div', { class: 'total' }, [el('span', { class: 'total-cur', text: c }), el('span', { class: 'total-amt', text: numFmt.format(totals[c]) })]));
+    });
+    $('home-rows-lbl').hidden = !rows.length;
+    const box = $('home-rows');
+    box.textContent = '';
+    rows.slice(0, 5).forEach((r) => {
+      box.appendChild(el('div', { class: 'sheet-row two' }, [
+        el('span', { text: (r.shop || 'Unnamed shop') + ' \u00b7 ' + (r.category || FALLBACK_CATEGORY) }),
+        el('span', { class: 'amt', text: typeof r.amount === 'number' ? numFmt.format(r.amount) + ' ' + (r.currency || '') : '\u2014' })
+      ]));
+    });
+  }
+
+  function applyTheme(t) {
+    const light = t === 'light';
+    if (light) document.documentElement.dataset.theme = 'light'; else document.documentElement.removeAttribute('data-theme');
+    $('th-dark').setAttribute('aria-pressed', String(!light));
+    $('th-light').setAttribute('aria-pressed', String(light));
+    const m = document.querySelector('meta[name="theme-color"]');
+    if (m) m.setAttribute('content', getComputedStyle(document.documentElement).getPropertyValue('--ground').trim() || '#0B0B0C');
+  }
+
+  function startView() {
+    if (settings.get('profile', null)) { show('home'); return; }
+    $('wel-form-wrap').hidden = false;
+    $('wel-done').hidden = true;
+    show('welcome');
+  }
+
+  function setPostmark() {
+    const d = new Date();
+    $('pm-mon').textContent = d.toLocaleDateString('en-GB', { month: 'short' }).toUpperCase();
+    $('pm-day').textContent = String(d.getDate());
   }
 
   function setProgress(pct, text) {
@@ -267,31 +457,39 @@
     if (failed) return 'The text reader could not run. The first scan needs an internet connection to download it. You can still fill in the details by hand.';
     if (!String(d.rawText || '').trim()) return 'No text was found. Try a sharper photo in good light, or fill in the details by hand.';
     const found = [isYMD(d.date), !!d.shop, typeof d.amount === 'number'].filter(Boolean).length;
-    if (!found) return 'Could not pick out the details. Open the scanned text below and fill in the form.';
-    if (found < 3) return 'Some details were not found. Please check and fill in the gaps.';
-    return 'Check the details before saving.';
+    if (!found) return 'Could not pick out the details. Fill them in by hand, or open the scanned text below.';
+    if (found < 3) return 'Some details were not read. Fill in the fields marked NOT READ before adding.';
+    return 'Tap the shop, amount or date to correct it.';
   }
 
   function openForm(d, mode, record, failed) {
     d = d || {};
     state.editing = record || null;
     state.draft = { thumb: isImgData(d.thumb) ? d.thumb : '', rawText: typeof d.rawText === 'string' ? d.rawText : '' };
-    $('f-date').value = isYMD(d.date) ? d.date : today();
+    const hasDate = isYMD(d.date);
+    const hasAmount = typeof d.amount === 'number' && isFinite(d.amount);
+    $('f-date').value = hasDate ? d.date : mode === 'manual' ? today() : '';
     $('f-shop').value = d.shop || '';
-    $('f-amount').value = typeof d.amount === 'number' && isFinite(d.amount) ? d.amount.toFixed(2) : '';
+    $('f-amount').value = hasAmount ? numFmt.format(d.amount) : '';
     $('f-currency').value = pickCurrency(d, mode);
     $('f-category').value = CATEGORIES.indexOf(d.category) >= 0 ? d.category : FALLBACK_CATEGORY;
     $('f-note').value = d.note || '';
     $('raw-text').textContent = state.draft.rawText;
     $('raw').hidden = !state.draft.rawText.trim();
-    $('raw').open = false;
+    $('more').open = false;
     $('form-title').textContent = mode === 'edit' ? 'Edit expense' : mode === 'manual' ? 'New expense' : 'Check the details';
     const hint = mode === 'scan' ? scanHint(d, failed) : '';
     $('form-hint').textContent = hint;
     $('form-hint').hidden = !hint;
+    ['shop', 'amount', 'date'].forEach((n) => setUnread(n, false));
+    state.hintFlagged = false;
+    if (mode === 'scan') {
+      setUnread('shop', !d.shop); setUnread('amount', !hasAmount); setUnread('date', !hasDate);
+      state.hintFlagged = !!document.querySelector('#form .fld.unread');
+    }
     $('btn-delete').hidden = mode !== 'edit';
-    $('btn-discard').textContent = mode === 'edit' ? 'Cancel' : 'Discard';
-    if (mode !== 'scan') setPreview(state.draft.thumb || null);
+    $('btn-discard').textContent = mode === 'edit' ? 'Cancel' : mode === 'manual' ? 'Back' : 'Retake';
+    $('btn-save').textContent = mode === 'edit' ? 'Save changes' : 'Add to sheet';
     setMode('review');
     if (mode === 'manual') $('f-shop').focus();
   }
@@ -300,8 +498,8 @@
     e.preventDefault();
     const date = $('f-date').value;
     const amount = parseAmount($('f-amount').value);
-    if (!isYMD(date)) { toast('Please pick a date.'); $('f-date').focus(); return; }
-    if (amount === null) { toast('Please enter the amount.'); $('f-amount').focus(); return; }
+    if (amount === null) { toast('Enter the amount first.'); setUnread('amount', true); $('f-amount').focus(); return; }
+    if (!isYMD(date)) { toast('Set the date first.'); setUnread('date', true); $('f-date').focus(); return; }
     const now = Date.now();
     const wasEditing = !!state.editing;
     const rec = Object.assign({}, state.editing || { createdAt: now }, {
@@ -329,8 +527,8 @@
     await loadAll();
     if (state.filter !== 'all' && state.filter !== date.slice(0, 7)) { state.filter = date.slice(0, 7); settings.set('filter', state.filter); }
     resetScan();
-    show('expenses');
-    toast(wasEditing ? 'Changes saved' : 'Expense saved');
+    if (wasEditing) { show('expenses'); toast('Changes saved'); }
+    else toast('Added to sheet · entry ' + state.all.length);
   }
 
   function onDiscard() {
@@ -429,6 +627,9 @@
     const label = state.filter === 'all' ? 'Current filter (all months)' : 'Current filter (' + fmtMonth(state.filter) + ')';
     $('export-scope').options[0].textContent = label + ' \u00b7 ' + filtered().length;
     $('export-scope').options[1].textContent = 'All expenses \u00b7 ' + state.all.length;
+    const prof = settings.get('profile', null);
+    $('profile-card').hidden = !prof;
+    if (prof) $('profile-text').textContent = 'Signed in on this phone as ' + (prof.name ? prof.name + ', ' : '') + prof.phone + '. Nothing is sent anywhere.';
     renderInstall();
   }
 
@@ -634,14 +835,67 @@
     $('btn-clear').addEventListener('click', clearAll);
 
     document.addEventListener('click', (e) => {
-      const b = e.target.closest && e.target.closest('.btn, .btn-link, .tab, .item');
+      const b = e.target.closest && e.target.closest('.btn, .btn-link, .tab, .item, .shutter');
       if (b) replay(b.classList.contains('tab') ? b.querySelector('.ic') : b, 'pop');
     });
+
+    $('btn-snap').addEventListener('click', onSnap);
+    $('btn-sheet').addEventListener('click', () => show('expenses'));
+    $('f-shop').addEventListener('input', () => {
+      const t = $('f-shop');
+      if (/[\r\n]/.test(t.value)) t.value = t.value.replace(/[\r\n]+/g, ' ');
+      setUnread('shop', false);
+      autogrow();
+      renderSheet();
+    });
+    $('f-shop').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('f-amount').focus(); } });
+    $('f-amount').addEventListener('input', () => { setUnread('amount', false); fitAmount(); renderSheet(); });
+    $('f-amount').addEventListener('blur', () => {
+      const n = parseAmount($('f-amount').value);
+      if (n !== null) { $('f-amount').value = numFmt.format(n); fitAmount(); }
+    });
+    $('f-amount').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('f-amount').blur(); } });
+    $('f-currency').addEventListener('change', () => { updateSym(); fitAmount(); renderSheet(); });
+    $('f-category').addEventListener('change', updateSeal);
+    ['input', 'change'].forEach((ev) => $('f-date').addEventListener(ev, () => { setUnread('date', false); updateDateText(); updateSeal(); renderSheet(); }));
+    $('f-date').addEventListener('click', () => { try { if ($('f-date').showPicker) $('f-date').showPicker(); } catch (err) { } });
+    window.addEventListener('resize', () => { if (state.mode === 'review') { autogrow(); fitAmount(); fitSeal(); } });
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (state.mode === 'review') refreshReview(); });
+    window.addEventListener('camstate', updateCaption);
+    document.addEventListener('visibilitychange', () => { setPostmark(); syncCam(); });
+    const msg = 'Hi! I use Receipt Snap to keep track of my expenses. Snap a receipt and the sheet fills itself in. It is free and works on your phone: ' + APP_URL;
+    $('btn-invite').href = 'https://wa.me/?text=' + encodeURIComponent(msg);
+    $('btn-home-scan').addEventListener('click', () => { resetScan(); show('scan'); });
+    $('th-dark').addEventListener('click', () => { settings.set('theme', 'dark'); applyTheme('dark'); });
+    $('th-light').addEventListener('click', () => { settings.set('theme', 'light'); applyTheme('light'); });
+    applyTheme(settings.get('theme', 'dark'));
+    $('welcome-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const name = $('w-name').value.trim().slice(0, 40);
+      const phone = $('w-phone').value.trim();
+      const digits = phone.replace(/\D/g, '');
+      if (digits.length < 7 || digits.length > 15) { toast('Enter a valid phone number.'); $('w-phone').focus(); return; }
+      settings.set('profile', { name, phone });
+      $('wel-name').textContent = 'Welcome, ' + (name || 'friend');
+      $('wel-form-wrap').hidden = true;
+      $('wel-done').hidden = false;
+      roll($('view-welcome'));
+    });
+    $('btn-start').addEventListener('click', () => show('home'));
+    $('btn-signout').addEventListener('click', () => {
+      if (!window.confirm('Remove your name and phone number from this phone? Your expenses stay.')) return;
+      settings.set('profile', null);
+      $('welcome-form').reset();
+      startView();
+    });
+    setPostmark();
+    updateCaption();
+    startView();
 
     bindDragDrop();
     bindInstall();
     if (!Parser) console.warn('ReceiptParser not found; fields will not be pre-filled.');
-    loadAll().then(renderSettings);
+    loadAll().then(() => { renderSettings(); if (!$('view-home').hidden) renderHome(); });
 
     if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
       window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js').catch((e) => console.warn('SW registration failed', e)); });
