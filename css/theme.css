@@ -6,6 +6,14 @@
   --seal: #6B1020;
 
   --income: #5BE08A;
+  --edge-o: #A93A08;
+  --edge-2: #7A2C08;
+  --edge-p: #A8A59A;
+  --face-2: #222226;
+  --outline: #2A0E03;
+  --gloss: rgba(255, 255, 255, .4);
+  --danger: #FF7A7A;
+  --edge-d: #7A1F1F;
   --hair-paper: rgba(11, 11, 12, .35);
   --hair-ground: rgba(250, 250, 247, .25);
   --paper-soft: rgba(250, 250, 247, .62);
@@ -44,6 +52,13 @@
   --seal: #F29AA8;
 
   --income: #15803D;
+  --edge-o: #7A2605;
+  --edge-2: #8A3410;
+  --edge-p: #000000;
+  --face-2: #FFFFFF;
+  --outline: #2A0E03;
+  --danger: #C62828;
+  --edge-d: #7A1414;
   --hair-paper: rgba(250, 250, 247, .35);
   --hair-ground: rgba(11, 11, 12, .25);
   --paper-soft: rgba(11, 11, 12, .66);
