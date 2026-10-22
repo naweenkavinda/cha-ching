@@ -1,4 +1,4 @@
-const VERSION = 'v16';
+const VERSION = 'v18';
 const SHELL = 'receipt-snap-shell-' + VERSION;
 const CDN = 'receipt-snap-cdn-v1';
 const ASSETS = [
@@ -10,6 +10,7 @@ const ASSETS = [
   './js/db.js',
   './js/ocr.js',
   './js/camera.js',
+  './js/float.js',
   './js/app.js',
   './manifest.webmanifest',
   './icons/icon-192.png',

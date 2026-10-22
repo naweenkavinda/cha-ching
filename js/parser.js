@@ -7,13 +7,13 @@
   var SMALL = ['THE', 'AND', 'OF', 'FOR', 'NEW', 'BIG', 'TOP', 'BAR', 'INN', 'PUB', 'HUT', 'BAY', 'SUN', 'CO', 'DAY', 'OLD', 'RED', 'HOT', 'CUP', 'TEA', 'ALL', 'ONE', 'TWO', 'MY', 'OUR', 'BY', 'AT', 'IN', 'ON', 'TO', 'DE', 'LA', 'LE', 'DU', 'SON', 'BUN', 'PET', 'CAR', 'GAS', 'OIL', 'BUS', 'BED', 'SPA', 'ART', 'BOX', 'MAX', 'WAY', 'FIT', 'JOY', 'KEY', 'MAN', 'MEN', 'FUN', 'EYE', 'ICE', 'PAN', 'POT', 'JET', 'SKY', 'SEA', 'GEM', 'HUB', 'CAB', 'VAN', 'MR', 'DR', 'MRS'];
   var KEYWORDS = {
     'Groceries': ['supermarket', 'super market', 'keells', 'cargills', 'food city', 'arpico', 'laugfs super', 'spar', 'glomark', 'grocery', 'groceries', 'vegetables', 'vegetable', 'rice', 'dhal', 'dal', 'milk powder', 'milk', 'sugar', 'flour', 'eggs', 'bread', 'banana', 'fruits', 'anchor', 'tesco', 'sainsbury', 'asda', 'walmart', 'aldi', 'lidl', 'carrefour', 'lulu', 'woolworths', 'coles', 'fairprice', 'dmart', 'whole foods', 'kroger'],
-    'Food & Dining': ['restaurant', 'cafe', 'caf\u00E9', 'caffe', 'coffee', 'cappuccino', 'bakery', 'bakers', 'bakehouse', 'hotel', 'kfc', 'pizza hut', 'pizza', 'mcdonald', 'burger', 'burger king', 'kottu', 'dine-in', 'dine in', 'takeaway', 'take away', 'service charge', 'biryani', 'noodles', 'juice', 'tea', 'chai', 'samosa', 'toast', 'kopitiam', 'cake', 'pastry', 'dining', 'eatery', 'bistro', 'grill', 'kitchen', 'food court', 'catering', 'perera & sons', 'domino', 'subway', 'starbucks', 'java lounge', 'barista', 'waiter', 'meal'],
-    'Transport & Fuel': ['fuel', 'petrol', 'diesel', 'octane', 'ceypetco', 'ceylon petroleum', 'lanka ioc', 'ioc', 'filling station', 'fuel station', 'service station', 'gas station', 'shed', 'parking', 'taxi', 'cab', 'pickme', 'uber', 'grab', 'toll', 'expressway', 'litre', 'ltr', 'shell', 'chevron', 'tuk', 'three wheeler', 'fare', 'trip'],
-    'Shopping': ['fashion', 'fashions', 'clothing', 'odel', 'cool planet', 'nolimit', 'no limit', 'fashion bug', 'electronics', 'singer', 'abans', 'softlogic', 'hardware', 'damro', 'apparel', 'boutique', 'textile', 'jewellery', 'jewellers', 'shoes', 'footwear', 'mall', 'ikea', 'amazon', 'daraz'],
-    'Health': ['pharmacy', 'pharmacies', 'chemist', 'hospital', 'clinic', 'channelling', 'channeling', 'lab', 'laboratory', 'osu sala', 'osusala', 'healthguard', 'medical', 'medicine', 'tablet', 'tab', 'capsule', 'syrup', 'doctor', 'dental', 'asiri', 'nawaloka', 'durdans', 'hemas', 'panadol', 'paracetamol', 'vitamin', 'mg', 'cvs', 'walgreens', 'boots', 'apollo'],
-    'Utilities & Bills': ['electricity', 'ceb', 'leco', 'water board', 'nwsdb', 'water bill', 'dialog', 'axiata', 'mobitel', 'slt', 'hutch', 'airtel', 'broadband', 'reload', 'bill payment', 'telecom', 'internet', 'fibre', 'postpaid', 'kwh', 'utility', 'utilities'],
-    'Entertainment': ['cinema', 'cinemas', 'scope', 'movie', 'ticket', 'game', 'theatre', 'theater', 'concert', 'netflix', 'spotify', 'bowling', 'arcade', 'pvr', 'imax'],
-    'Travel': ['airline', 'srilankan airlines', 'flight', 'airport', 'booking', 'hotel room', 'room charge', 'resort', 'lodge', 'guest house', 'villa', 'bus ticket', 'railway', 'train', 'accommodation', 'agoda', 'airbnb', 'expedia', 'boarding pass'],
+    'Food & Dining': ['dinner', 'lunch', 'breakfast', 'brunch', 'snack', 'snacks', 'drinks', 'beer', 'wine', 'dessert', 'ice cream', 'foodpanda', 'uber eats', 'ubereats', 'eat out', 'restaurant', 'cafe', 'caf\u00E9', 'caffe', 'coffee', 'cappuccino', 'bakery', 'bakers', 'bakehouse', 'hotel', 'kfc', 'pizza hut', 'pizza', 'mcdonald', 'burger', 'burger king', 'kottu', 'dine-in', 'dine in', 'takeaway', 'take away', 'service charge', 'biryani', 'noodles', 'juice', 'tea', 'chai', 'samosa', 'toast', 'kopitiam', 'cake', 'pastry', 'dining', 'eatery', 'bistro', 'grill', 'kitchen', 'food court', 'catering', 'perera & sons', 'domino', 'subway', 'starbucks', 'java lounge', 'barista', 'waiter', 'meal'],
+    'Transport & Fuel': ['bus', 'commute', 'car wash', 'tyre', 'tire', 'mechanic', 'vehicle', 'motorbike', 'tuk tuk', 'fuel', 'petrol', 'diesel', 'octane', 'ceypetco', 'ceylon petroleum', 'lanka ioc', 'ioc', 'filling station', 'fuel station', 'service station', 'gas station', 'shed', 'parking', 'taxi', 'cab', 'pickme', 'uber', 'grab', 'toll', 'expressway', 'litre', 'ltr', 'shell', 'chevron', 'tuk', 'three wheeler', 'fare', 'trip'],
+    'Shopping': ['clothes', 'shirt', 'dress', 'gift', 'gifts', 'shopping', 'laptop', 'phone case', 'fashion', 'fashions', 'clothing', 'odel', 'cool planet', 'nolimit', 'no limit', 'fashion bug', 'electronics', 'singer', 'abans', 'softlogic', 'hardware', 'damro', 'apparel', 'boutique', 'textile', 'jewellery', 'jewellers', 'shoes', 'footwear', 'mall', 'ikea', 'amazon', 'daraz'],
+    'Health': ['gym', 'dentist', 'checkup', 'check up', 'pharmacy', 'pharmacies', 'chemist', 'hospital', 'clinic', 'channelling', 'channeling', 'lab', 'laboratory', 'osu sala', 'osusala', 'healthguard', 'medical', 'medicine', 'tablet', 'tab', 'capsule', 'syrup', 'doctor', 'dental', 'asiri', 'nawaloka', 'durdans', 'hemas', 'panadol', 'paracetamol', 'vitamin', 'mg', 'cvs', 'walgreens', 'boots', 'apollo'],
+    'Utilities & Bills': ['rent', 'electric', 'wifi', 'phone bill', 'mobile bill', 'gas bill', 'bills', 'subscription', 'electricity', 'ceb', 'leco', 'water board', 'nwsdb', 'water bill', 'dialog', 'axiata', 'mobitel', 'slt', 'hutch', 'airtel', 'broadband', 'reload', 'bill payment', 'telecom', 'internet', 'fibre', 'postpaid', 'kwh', 'utility', 'utilities'],
+    'Entertainment': ['party', 'movies', 'karaoke', 'outing', 'club', 'cinema', 'cinemas', 'scope', 'movie', 'ticket', 'game', 'theatre', 'theater', 'concert', 'netflix', 'spotify', 'bowling', 'arcade', 'pvr', 'imax'],
+    'Travel': ['holiday', 'vacation', 'hostel', 'airline', 'srilankan airlines', 'flight', 'airport', 'booking', 'hotel room', 'room charge', 'resort', 'lodge', 'guest house', 'villa', 'bus ticket', 'railway', 'train', 'accommodation', 'agoda', 'airbnb', 'expedia', 'boarding pass'],
     'Office & Business': ['stationery', 'stationary', 'print', 'printing', 'photocopy', 'photo copy', 'courier', 'office', 'software', 'paper', 'a4', 'toner', 'cartridge', 'pen', 'bookshop', 'book shop', 'sarasavi', 'vijitha yapa', 'staples', 'domex', 'dhl', 'fedex', 'pronto', 'hosting', 'domain']
   };
 
@@ -193,7 +193,20 @@
     return tie || !bs ? 'Other' : best;
   }
 
-  function blank(cur) { return { date: '', shop: '', amount: null, currency: cur, category: 'Other' }; }
+  var BRANDS = [['Visa', /\bvisa\b/i], ['Mastercard', /\bmaster\s?card\b|\bmaestro\b/i], ['Amex', /\bamex\b|american express/i], ['UnionPay', /union\s?pay/i], ['JCB', /\bjcb\b/i], ['Diners', /\bdiners\b/i], ['LankaPay', /lanka\s?pay/i]];
+
+  function detectPayment(raw) {
+    var brand = '', i;
+    for (i = 0; i < BRANDS.length; i++) if (BRANDS[i][1].test(raw)) { brand = BRANDS[i][0]; break; }
+    var m = raw.match(/(?:\*{2,}|[xX]{3,}|•{2,}|\.{3,})\s*(\d{4})\b/);
+    var last4 = m ? m[1] : '';
+    if (!last4) { var m2 = raw.match(/\b(?:card|visa|master\s?card|amex)\b[^\d\n]{0,24}(\d{4})\b(?![,.]\d)/i); if (m2) last4 = m2[1]; }
+    var strong = !!brand || !!last4 || /\b(?:card\s*(?:payment|sale|no|number|type)|credit\s*card|debit\s*card|contactless|chip\s*&?\s*pin|approval\s*code|auth(?:orisation|orization)?\s*code|pos\s*slip)\b/i.test(raw);
+    if (!strong) return { pay: 'cash', card: '' };
+    return { pay: 'card', card: (brand || 'Card') + (last4 ? ' ' + last4 : '') };
+  }
+
+  function blank(cur) { return { date: '', shop: '', amount: null, currency: cur, category: 'Other', kind: 'expense', pay: 'cash', card: '' }; }
 
   function parse(text, opts) {
     var def = 'LKR';
@@ -212,6 +225,9 @@
       r.date = findDate(an, lim, r.currency === 'USD');
       r.shop = findShop(lines);
       r.category = categorize(r.shop, raw);
+      var p = detectPayment(raw);
+      r.pay = p.pay;
+      r.card = p.card;
       return r;
     } catch (e) {
       return blank(def);

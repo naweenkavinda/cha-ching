@@ -159,12 +159,32 @@
     navigator.storage.persist().catch(() => {});
   }
 
-  const VIEWS = ['welcome', 'home', 'summary', 'scan', 'expenses', 'settings'];
+  const VIEWS = ['welcome', 'home', 'quest', 'summary', 'scan', 'expenses', 'settings'];
   const ROLL_SEL = '.stamp, .notice, .caption, .controls, .actions, .sheet-row, .view-head, .sec, .progress, .home-h, #home-date, .theme-row, .home-actions, .list > li, .empty';
   const SYMBOLS = { LKR: 'Rs', USD: '$', EUR: '€', GBP: '£', INR: '₹', AUD: 'A$', SGD: 'S$', AED: 'AED' };
   const ymdDate = (s) => { const p = s.split('-').map(Number); return new Date(p[0], p[1] - 1, p[2]); };
   const fmtLong = (s) => (isYMD(s) ? ymdDate(s).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '');
   const fmtSeal = (s) => (isYMD(s) ? ymdDate(s).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).toUpperCase() : 'NO DATE');
+  const isInc = (r) => !!r && r.kind === 'income';
+  const payTag = (r) => (r && r.pay === 'card' ? (r.card || 'Card') : '');
+  function sumsOf(rows) {
+    const spent = {}, earned = {};
+    rows.forEach((r) => {
+      if (typeof r.amount !== 'number' || !isFinite(r.amount)) return;
+      const m = isInc(r) ? earned : spent;
+      m[r.currency] = (m[r.currency] || 0) + r.amount;
+    });
+    return { spent, earned };
+  }
+  function fillTotals(box, sums, fmt) {
+    box.textContent = '';
+    Object.keys(sums.spent).sort((a, b) => sums.spent[b] - sums.spent[a]).forEach((c) => {
+      box.appendChild(el('div', { class: 'total' }, [el('span', { class: 'total-cur', text: c }), el('span', { class: 'total-amt', text: fmt(sums.spent[c]) })]));
+    });
+    Object.keys(sums.earned).sort((a, b) => sums.earned[b] - sums.earned[a]).forEach((c) => {
+      box.appendChild(el('div', { class: 'total' }, [el('span', { class: 'total-cur', text: c + ' IN' }), el('span', { class: 'total-amt in', text: '+' + fmt(sums.earned[c]) })]));
+    });
+  }
   const fmtShort = (s) => (isYMD(s) ? ymdDate(s).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—');
 
   function replay(node, cls) {
@@ -353,10 +373,10 @@
     const saved = state.all.filter((r) => r.id !== editingId).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)).slice(-2);
     const cur = $('f-currency').value;
     const amt = parseAmount($('f-amount').value);
-    const rows = saved.concat([{ date: $('f-date').value, shop: $('f-shop').value.trim(), amount: amt, currency: cur }]);
+    const rows = saved.concat([{ date: $('f-date').value, shop: $('f-shop').value.trim(), amount: amt, currency: cur, kind: formKind }]);
     box.textContent = '';
     rows.forEach((r, i) => {
-      const num = typeof r.amount === 'number' && isFinite(r.amount) ? numFmt.format(r.amount) + (r.currency && r.currency !== cur ? ' ' + r.currency : '') : '—';
+      const num = typeof r.amount === 'number' && isFinite(r.amount) ? (isInc(r) ? '+' : '') + numFmt.format(r.amount) + (r.currency && r.currency !== cur ? ' ' + r.currency : '') : '—';
       box.appendChild(el('div', { class: 'sheet-row' + (i === rows.length - 1 ? ' is-new' : '') }, [
         el('span', { text: fmtShort(r.date) }),
         el('span', { text: r.shop || '—' }),
@@ -397,6 +417,162 @@
 
   const APP_URL = 'https://naweenkavinda.github.io/receipt-snap/';
 
+  function inviteFriend() {
+    const msg = 'Hi! I use Receipt Snap to keep track of my expenses. Snap a receipt and the sheet fills itself in. It is free and works on your phone: ' + APP_URL;
+    window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank', 'noopener');
+  }
+
+  const Q = { step: 'what', desc: '', amount: null, currency: 'LKR', kind: 'expense', card: null, cardName: '', history: [] };
+  const QSTEPS = {
+    what: { emoji: '\uD83D\uDE0F', title: 'What did you do?', sub: 'Spill it. No judgement. (Okay, a little.)' },
+    amount: { emoji: '\uD83E\uDD14', title: 'How much?', sub: "Be honest. I won't tell anyone." },
+    kind: { emoji: '\uD83E\uDDD0', title: 'Expense or income?', sub: 'Money going out, or money coming in?' },
+    card: { emoji: '\uD83D\uDCB3', title: 'Was it a card expense?', sub: 'Did the plastic take the hit?' },
+    cardname: { emoji: '\uD83C\uDFE6', title: 'Which card?', sub: 'Visa, Master, something shiny?' }
+  };
+
+  function questAfter(from) {
+    if (from === 'what') return 'amount';
+    if (from === 'amount') return 'kind';
+    if (from === 'kind') return Q.kind === 'expense' ? 'card' : 'done';
+    if (from === 'card') return Q.card ? 'cardname' : 'done';
+    return 'done';
+  }
+
+  function openQuest() {
+    Object.assign(Q, { step: 'what', desc: '', amount: null, currency: defaultCurrency(), kind: 'expense', card: null, cardName: '', history: [] });
+    show('quest', 'home');
+    renderQuest();
+  }
+
+  function choice(emoji, label, onPick) {
+    const b = el('button', { type: 'button', class: 'q-choice' }, [el('span', { class: 'em', text: emoji }), el('span', { text: label })]);
+    b.addEventListener('click', onPick);
+    return b;
+  }
+
+  function renderQuest() {
+    const s = QSTEPS[Q.step];
+    const emoji = $('q-emoji');
+    emoji.textContent = s.emoji;
+    replay(emoji, 'pop');
+    $('q-title').textContent = s.title;
+    $('q-sub').textContent = s.sub;
+    $('q-step').textContent = 'QUESTION ' + (Q.history.length + 1);
+    $('q-back').style.visibility = Q.history.length ? 'visible' : 'hidden';
+    const body = $('q-body');
+    body.textContent = '';
+    const next = $('q-next');
+    next.hidden = false;
+    next.textContent = Q.step === 'cardname' ? 'Done' : 'Next';
+    const err = el('p', { class: 'q-error', id: 'q-err', 'aria-live': 'polite' });
+    let focusEl = null;
+    if (Q.step === 'what') {
+      focusEl = el('input', { id: 'q-in', class: 'q-in', type: 'text', maxlength: '80', placeholder: 'e.g. Lunch with the team', autocapitalize: 'sentences', enterkeyhint: 'next', 'aria-label': 'What did you do?' });
+      focusEl.value = Q.desc;
+      body.appendChild(focusEl);
+    } else if (Q.step === 'amount') {
+      const sym = el('span', { text: SYMBOLS[Q.currency] || Q.currency });
+      const sel = el('select', { 'aria-label': 'Currency' });
+      CURRENCIES.forEach((c) => sel.appendChild(new Option(c + ' \u2013 ' + CURRENCY_NAMES[c], c)));
+      sel.value = Q.currency;
+      sel.addEventListener('change', () => { Q.currency = sel.value; sym.textContent = SYMBOLS[Q.currency] || Q.currency; });
+      focusEl = el('input', { id: 'q-in', class: 'q-in', type: 'text', inputmode: 'decimal', placeholder: '0.00', enterkeyhint: 'next', 'aria-label': 'Amount' });
+      if (Q.amount !== null) focusEl.value = numFmt.format(Q.amount);
+      body.appendChild(el('div', { class: 'q-amount' }, [el('span', { class: 'q-cur' }, [sym, sel]), focusEl]));
+    } else if (Q.step === 'kind') {
+      next.hidden = true;
+      body.appendChild(el('div', { class: 'q-choices' }, [
+        choice('\uD83D\uDCB8', 'Expense', () => { Q.kind = 'expense'; questAdvance(); }),
+        choice('\uD83E\uDD11', 'Income', () => { Q.kind = 'income'; questAdvance(); })
+      ]));
+    } else if (Q.step === 'card') {
+      next.hidden = true;
+      body.appendChild(el('div', { class: 'q-choices' }, [
+        choice('\uD83D\uDCB3', 'Yes, card', () => { Q.card = true; questAdvance(); }),
+        choice('\uD83D\uDCB5', 'No, cash', () => { Q.card = false; questAdvance(); })
+      ]));
+    } else {
+      focusEl = el('input', { id: 'q-in', class: 'q-in', type: 'text', maxlength: '40', placeholder: 'e.g. Visa 4521', autocapitalize: 'words', enterkeyhint: 'done', 'aria-label': 'Card name' });
+      focusEl.value = Q.cardName;
+      body.appendChild(focusEl);
+    }
+    body.appendChild(err);
+    if (focusEl) {
+      focusEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); questAdvance(); } });
+      setTimeout(() => { try { focusEl.focus(); } catch (e) { } }, 350);
+    }
+  }
+
+  function questError(msg) {
+    const e = $('q-err');
+    if (e) e.textContent = msg;
+    const card = document.querySelector('.q-card');
+    card.classList.remove('q-shake');
+    card.getBoundingClientRect();
+    card.classList.add('q-shake');
+  }
+
+  function questAdvance() {
+    const input = $('q-in');
+    if (Q.step === 'what') {
+      const v = input.value.trim();
+      if (!v) { questError('Come on, spill it \uD83D\uDE0F'); return; }
+      Q.desc = v;
+    } else if (Q.step === 'amount') {
+      const n = parseAmount(input.value);
+      if (n === null || n <= 0) { questError('A real number above zero, please \uD83E\uDD14'); return; }
+      Q.amount = n;
+    } else if (Q.step === 'cardname') {
+      const v = input.value.trim();
+      if (!v) { questError('Give the card a name \uD83C\uDFE6'); return; }
+      Q.cardName = v;
+    }
+    const nxt = questAfter(Q.step);
+    if (nxt === 'done') { finishQuest(); return; }
+    Q.history.push(Q.step);
+    Q.step = nxt;
+    renderQuest();
+    roll($('view-quest'));
+  }
+
+  function questBack() {
+    if (!Q.history.length) return;
+    Q.step = Q.history.pop();
+    renderQuest();
+  }
+
+  async function finishQuest() {
+    const now = Date.now();
+    const income = Q.kind === 'income';
+    const rec = {
+      date: today(),
+      shop: Q.desc,
+      amount: Math.round(Q.amount * 100) / 100,
+      currency: Q.currency,
+      category: income ? FALLBACK_CATEGORY : ((Parser && Parser.parse(Q.desc).category) || FALLBACK_CATEGORY),
+      note: '',
+      kind: Q.kind,
+      pay: !income && Q.card ? 'card' : 'cash',
+      card: !income && Q.card ? Q.cardName.slice(0, 40) : '',
+      thumb: '',
+      rawText: '',
+      createdAt: now,
+      updatedAt: now
+    };
+    try {
+      await DB.put(rec);
+    } catch (err) {
+      toast('Could not save. Storage may be full or blocked.', 4500);
+      return;
+    }
+    requestPersist();
+    Sfx.play('ok');
+    await loadAll();
+    show('home');
+    toast((income ? 'Income added' : 'Cost added') + ' \u00b7 entry ' + state.all.length);
+  }
+
   function renderHome() {
     const p = settings.get('profile', null);
     const now = new Date();
@@ -404,22 +580,17 @@
     $('home-h').textContent = (h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening') + (p && p.name ? ', ' + p.name : '');
     $('home-date').textContent = now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }).toUpperCase();
     const rows = state.all.filter((r) => r.date === today()).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-    const totals = {};
-    rows.forEach((r) => { if (typeof r.amount === 'number' && isFinite(r.amount)) totals[r.currency] = (totals[r.currency] || 0) + r.amount; });
     $('home-count').textContent = rows.length ? 'TODAY \u00b7 ' + rows.length + (rows.length === 1 ? ' ENTRY' : ' ENTRIES') : 'TODAY';
     const tb = $('home-totals');
-    tb.textContent = '';
-    if (!rows.length) tb.appendChild(el('p', { class: 'none', text: 'Nothing spent yet today.' }));
-    Object.keys(totals).sort((a, b) => totals[b] - totals[a]).forEach((c) => {
-      tb.appendChild(el('div', { class: 'total' }, [el('span', { class: 'total-cur', text: c }), el('span', { class: 'total-amt', text: numFmt.format(totals[c]) })]));
-    });
+    fillTotals(tb, sumsOf(rows), (n) => numFmt.format(n));
+    if (!rows.length) tb.appendChild(el('p', { class: 'none', text: 'Nothing yet today.' }));
     $('home-rows-lbl').hidden = !rows.length;
     const box = $('home-rows');
     box.textContent = '';
     rows.slice(0, 5).forEach((r) => {
       box.appendChild(el('div', { class: 'sheet-row two' }, [
-        el('span', { text: (r.shop || 'Unnamed shop') + ' \u00b7 ' + (r.category || FALLBACK_CATEGORY) }),
-        el('span', { class: 'amt', text: typeof r.amount === 'number' ? numFmt.format(r.amount) + ' ' + (r.currency || '') : '\u2014' })
+        el('span', { text: (r.shop || 'Unnamed shop') + ' \u00b7 ' + (isInc(r) ? 'Income' : (r.category || FALLBACK_CATEGORY)) + (payTag(r) ? ' \u00b7 ' + payTag(r) : '') }),
+        el('span', { class: 'amt' + (isInc(r) ? ' in' : ''), text: typeof r.amount === 'number' ? (isInc(r) ? '+' : '') + numFmt.format(r.amount) + ' ' + (r.currency || '') : '\u2014' })
       ]));
     });
   }
@@ -474,17 +645,35 @@
     if (!rows.length) {
       lines.push('No entries in this period.');
     } else {
-      const totals = {};
-      rows.forEach((r) => { totals[r.currency] = (totals[r.currency] || 0) + r.amount; });
+      const sums = sumsOf(rows);
+      const spentKeys = Object.keys(sums.spent).sort((x, y) => sums.spent[y] - sums.spent[x]);
+      const earnedKeys = Object.keys(sums.earned).sort((x, y) => sums.earned[y] - sums.earned[x]);
       lines.push('TOTAL SPENT');
-      Object.keys(totals).sort((x, y) => totals[y] - totals[x]).forEach((c) => lines.push(two(c, numFmt.format(totals[c]))));
+      if (!spentKeys.length) lines.push(two('-', '0.00'));
+      spentKeys.forEach((c) => lines.push(two(c, numFmt.format(sums.spent[c]))));
+      if (earnedKeys.length) {
+        lines.push('TOTAL INCOME');
+        earnedKeys.forEach((c) => lines.push(two(c, '+' + numFmt.format(sums.earned[c]))));
+        lines.push('NET');
+        Object.keys(Object.assign({}, sums.spent, sums.earned)).forEach((c) => {
+          const n = (sums.earned[c] || 0) - (sums.spent[c] || 0);
+          lines.push(two(c, (n >= 0 ? '+' : '-') + numFmt.format(Math.abs(n))));
+        });
+      }
       lines.push(two('Entries', rows.length));
-      lines.push(rule, 'BY CATEGORY');
-      const cats = {};
-      rows.forEach((r) => { const k = (r.category || FALLBACK_CATEGORY) + '|' + r.currency; cats[k] = (cats[k] || 0) + r.amount; });
-      Object.keys(cats).sort((x, y) => cats[y] - cats[x]).forEach((k) => { const p = k.split('|'); lines.push(two(p[0], money(cats[k], p[1]))); });
+      const exp = rows.filter((r) => !isInc(r));
+      if (exp.length) {
+        lines.push(rule, 'BY CATEGORY');
+        const cats = {};
+        exp.forEach((r) => { const k = (r.category || FALLBACK_CATEGORY) + '|' + r.currency; cats[k] = (cats[k] || 0) + r.amount; });
+        Object.keys(cats).sort((x, y) => cats[y] - cats[x]).forEach((k) => { const p = k.split('|'); lines.push(two(p[0], money(cats[k], p[1]))); });
+        lines.push(rule, 'PAID WITH');
+        const pays = {};
+        exp.forEach((r) => { const k = (r.pay === 'card' ? 'Card' : 'Cash') + '|' + r.currency; pays[k] = (pays[k] || 0) + r.amount; });
+        Object.keys(pays).sort().forEach((k) => { const p = k.split('|'); lines.push(two(p[0], money(pays[k], p[1]))); });
+      }
       lines.push(rule, 'ENTRIES');
-      rows.forEach((r) => lines.push(two(fmtShort(r.date) + '  ' + (r.shop || 'Unnamed shop'), money(r.amount, r.currency))));
+      rows.forEach((r) => lines.push(two(fmtShort(r.date) + '  ' + (r.shop || 'Unnamed shop') + (payTag(r) ? ' (' + payTag(r) + ')' : ''), (isInc(r) ? '+' : '') + money(r.amount, r.currency))));
     }
     lines.push(rule, 'Generated ' + new Date().toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' }));
     const name = 'receipt-snap-' + (kind === 'week' ? 'week-' + a : 'month-' + a.slice(0, 7)) + '.pdf';
@@ -542,92 +731,6 @@
     $('sum-h').textContent = state.summary.title;
     $('sum-text').textContent = state.summary.text;
     show('summary', 'home');
-  }
-
-  function initFab() {
-    const fab = $('fab-settings');
-    const M = 8, SIZE = 56, TB = 64;
-    let drag = null, moved = false, justDragged = false;
-    const place = (x, y) => {
-      x = Math.min(Math.max(M, x), window.innerWidth - SIZE - M);
-      y = Math.min(Math.max(M, y), window.innerHeight - TB - SIZE - M);
-      fab.style.left = x + 'px';
-      fab.style.top = y + 'px';
-      fab.style.right = 'auto';
-      fab.style.bottom = 'auto';
-      return [x, y];
-    };
-    const saved = settings.get('fabPos', null);
-    if (saved && typeof saved.fx === 'number') place(saved.fx * window.innerWidth, saved.fy * window.innerHeight);
-    const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    let px = null, py = 0, vx = 0, vy = 0, tx = 0, ty = 0, last = 0;
-    const pickTarget = () => {
-      tx = M + Math.random() * Math.max(1, window.innerWidth - SIZE - 2 * M);
-      ty = M + Math.random() * Math.max(1, window.innerHeight - TB - SIZE - 2 * M);
-    };
-    const frame = (t) => {
-      requestAnimationFrame(frame);
-      const dt = Math.min(0.05, (t - last) / 1000 || 0);
-      last = t;
-      if (reduced || document.hidden || document.body.dataset.screen !== 'home') { px = null; return; }
-      if (drag) { px = null; return; }
-      if (px === null) {
-        const r = fab.getBoundingClientRect();
-        px = parseFloat(fab.style.left);
-        py = parseFloat(fab.style.top);
-        if (!isFinite(px)) { px = r.left; py = r.top; }
-        pickTarget();
-      }
-      const dx = tx - px, dy = ty - py, dist = Math.hypot(dx, dy);
-      if (dist < 24) pickTarget();
-      const sp = 34;
-      const wx = Math.cos(t / 1300) * 16, wy = Math.sin(t / 900) * 18;
-      const wantX = (dx / (dist || 1)) * sp + wx, wantY = (dy / (dist || 1)) * sp + wy;
-      const k = Math.min(1, dt * 1.4);
-      vx += (wantX - vx) * k;
-      vy += (wantY - vy) * k;
-      const p = place(px + vx * dt, py + vy * dt);
-      if (p[0] !== px + vx * dt || p[1] !== py + vy * dt) { pickTarget(); vx *= -0.4; vy *= -0.4; }
-      px = p[0];
-      py = p[1];
-      fab.style.rotate = Math.max(-14, Math.min(14, vx * 0.35)) + 'deg';
-    };
-    requestAnimationFrame(frame);
-    fab.addEventListener('pointerdown', (e) => {
-      const r = fab.getBoundingClientRect();
-      drag = { id: e.pointerId, sx: e.clientX, sy: e.clientY, ox: r.left, oy: r.top };
-      moved = false;
-      document.body.classList.add('fab-drag');
-      try { fab.setPointerCapture(e.pointerId); } catch (err) { }
-    });
-    fab.addEventListener('pointermove', (e) => {
-      if (!drag || e.pointerId !== drag.id) return;
-      const dx = e.clientX - drag.sx, dy = e.clientY - drag.sy;
-      if (!moved && Math.hypot(dx, dy) < 6) return;
-      moved = true;
-      if (window.getSelection) window.getSelection().removeAllRanges();
-      fab.classList.add('dragging');
-      place(drag.ox + dx, drag.oy + dy);
-    });
-    const end = () => {
-      if (!drag) return;
-      drag = null;
-      document.body.classList.remove('fab-drag');
-      fab.classList.remove('dragging');
-      if (moved) {
-        settings.set('fabPos', { fx: parseFloat(fab.style.left) / window.innerWidth, fy: parseFloat(fab.style.top) / window.innerHeight });
-        justDragged = true;
-        setTimeout(() => { justDragged = false; }, 60);
-      }
-    };
-    fab.addEventListener('pointerup', end);
-    fab.addEventListener('pointercancel', end);
-    fab.addEventListener('click', () => { if (!justDragged) show('settings', 'home'); });
-    window.addEventListener('resize', () => {
-      if (!fab.style.left) return;
-      const s = settings.get('fabPos', null);
-      if (s) place(s.fx * window.innerWidth, s.fy * window.innerHeight);
-    });
   }
 
   function setPostmark() {
@@ -730,6 +833,22 @@
     return 'Tap the shop, amount or date to correct it.';
   }
 
+  let formKind = 'expense', formPay = 'cash';
+  function setKind(k) {
+    formKind = k;
+    $('k-exp').setAttribute('aria-pressed', String(k === 'expense'));
+    $('k-inc').setAttribute('aria-pressed', String(k === 'income'));
+    $('pay-wrap').hidden = k === 'income';
+    if (state.mode === 'review') renderSheet();
+  }
+  function setPay(p, name) {
+    formPay = p;
+    $('p-cash').setAttribute('aria-pressed', String(p === 'cash'));
+    $('p-card').setAttribute('aria-pressed', String(p === 'card'));
+    $('f-card').hidden = p !== 'card';
+    if (name !== undefined) $('f-card').value = name;
+  }
+
   function openForm(d, mode, record, failed) {
     d = d || {};
     state.editing = record || null;
@@ -742,10 +861,12 @@
     $('f-currency').value = pickCurrency(d, mode);
     $('f-category').value = CATEGORIES.indexOf(d.category) >= 0 ? d.category : FALLBACK_CATEGORY;
     $('f-note').value = d.note || '';
+    setKind(d.kind === 'income' ? 'income' : 'expense');
+    setPay(d.pay === 'card' ? 'card' : 'cash', d.card || '');
     $('raw-text').textContent = state.draft.rawText;
     $('raw').hidden = !state.draft.rawText.trim();
     $('more').open = false;
-    $('form-title').textContent = mode === 'edit' ? 'Edit expense' : mode === 'manual' ? 'New expense' : 'Check the details';
+    $('form-title').textContent = mode === 'edit' ? 'Edit entry' : mode === 'manual' ? 'New entry' : 'Check the details';
     const hint = mode === 'scan' ? scanHint(d, failed) : '';
     $('form-hint').textContent = hint;
     $('form-hint').hidden = !hint;
@@ -777,6 +898,9 @@
       currency: $('f-currency').value,
       category: $('f-category').value,
       note: $('f-note').value.trim(),
+      kind: formKind,
+      pay: formKind === 'income' ? 'cash' : formPay,
+      card: formKind !== 'income' && formPay === 'card' ? $('f-card').value.trim().slice(0, 40) : '',
       thumb: state.draft ? state.draft.thumb : '',
       rawText: state.draft ? state.draft.rawText : '',
       updatedAt: now
@@ -797,7 +921,7 @@
     if (state.filter !== 'all' && state.filter !== date.slice(0, 7)) { state.filter = date.slice(0, 7); settings.set('filter', state.filter); }
     resetScan();
     if (wasEditing) { show('expenses'); toast('Changes saved'); }
-    else toast('Added to sheet · entry ' + state.all.length);
+    else toast((formKind === 'income' ? 'Income added' : 'Added to sheet') + ' · entry ' + state.all.length);
   }
 
   function onDiscard() {
@@ -846,10 +970,10 @@
       thumb,
       el('span', { class: 'item-main' }, [
         el('span', { class: 'item-shop', text: shop }),
-        el('span', { class: 'item-meta', text: fmtDate(r.date) + ' \u00b7 ' + (r.category || FALLBACK_CATEGORY) })
+        el('span', { class: 'item-meta', text: fmtDate(r.date) + ' \u00b7 ' + (isInc(r) ? 'Income' : (r.category || FALLBACK_CATEGORY)) + (payTag(r) ? ' \u00b7 ' + payTag(r) : '') })
       ]),
       el('span', { class: 'item-amt' }, [
-        el('span', { text: amount }),
+        el('span', { class: isInc(r) ? 'in' : '', text: (isInc(r) ? '+' : '') + amount }),
         el('span', { class: 'item-cur', text: r.currency || '' })
       ])
     ]);
@@ -872,17 +996,8 @@
     $('month-wrap').hidden = empty;
 
     const rows = filtered();
-    const totals = {};
-    rows.forEach((r) => { if (typeof r.amount === 'number' && isFinite(r.amount)) totals[r.currency] = (totals[r.currency] || 0) + r.amount; });
-    $('summary-count').textContent = rows.length + (rows.length === 1 ? ' expense' : ' expenses') + (state.filter === 'all' ? ' in total' : ' in ' + fmtMonth(state.filter));
-    const tbox = $('totals');
-    tbox.textContent = '';
-    Object.keys(totals).sort((a, b) => totals[b] - totals[a]).forEach((c) => {
-      tbox.appendChild(el('div', { class: 'total' }, [
-        el('span', { class: 'total-cur', text: c }),
-        el('span', { class: 'total-amt', text: numFmt.format(totals[c]) })
-      ]));
-    });
+    $('summary-count').textContent = rows.length + (rows.length === 1 ? ' entry' : ' entries') + (state.filter === 'all' ? ' in total' : ' in ' + fmtMonth(state.filter));
+    fillTotals($('totals'), sumsOf(rows), (n) => numFmt.format(n));
 
     const list = $('list');
     const frag = document.createDocumentFragment();
@@ -917,10 +1032,10 @@
   }
 
   function toCSV(rows) {
-    const lines = ['Date,Shop,Amount,Currency,Category,Note'];
+    const lines = ['Date,Type,Description,Amount,Currency,Category,Paid with,Card,Note'];
     rows.slice().sort((a, b) => String(a.date || '').localeCompare(String(b.date || ''))).forEach((r) => {
       const amount = typeof r.amount === 'number' && isFinite(r.amount) ? r.amount.toFixed(2) : '';
-      lines.push([csvCell(r.date), csvCell(r.shop), amount, csvCell(r.currency), csvCell(r.category), csvCell(r.note)].join(','));
+      lines.push([csvCell(r.date), isInc(r) ? 'Income' : 'Expense', csvCell(r.shop), amount, csvCell(r.currency), csvCell(isInc(r) ? '' : r.category), isInc(r) ? '' : (r.pay === 'card' ? 'Card' : 'Cash'), csvCell(r.pay === 'card' ? r.card : ''), csvCell(r.note)].join(','));
     });
     return '\uFEFF' + lines.join('\r\n') + '\r\n';
   }
@@ -979,6 +1094,9 @@
       currency: CURRENCIES.indexOf(r.currency) >= 0 ? r.currency : defaultCurrency(),
       category: CATEGORIES.indexOf(r.category) >= 0 ? r.category : FALLBACK_CATEGORY,
       note: str(r.note, 500),
+      kind: r.kind === 'income' ? 'income' : 'expense',
+      pay: r.pay === 'card' ? 'card' : 'cash',
+      card: str(r.card, 40),
       thumb: isImgData(r.thumb) && r.thumb.length < 400000 ? r.thumb : '',
       rawText: str(r.rawText, 20000),
       createdAt: Number.isFinite(r.createdAt) ? r.createdAt : now,
@@ -1141,10 +1259,19 @@
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (state.mode === 'review') refreshReview(); });
     window.addEventListener('camstate', updateCaption);
     document.addEventListener('visibilitychange', () => { setPostmark(); syncCam(); });
-    const msg = 'Hi! I use Receipt Snap to keep track of my expenses. Snap a receipt and the sheet fills itself in. It is free and works on your phone: ' + APP_URL;
-    $('btn-invite').href = 'https://wa.me/?text=' + encodeURIComponent(msg);
+
     $('btn-home-scan').addEventListener('click', () => { resetScan(); show('scan'); });
-    initFab();
+    Float.setActive(() => document.body.dataset.screen === 'home');
+    Float.add($('fab-settings'), { onTap: () => show('settings', 'home'), start: (b) => [b.x1, b.y1] });
+    Float.add($('fab-invite'), { onTap: inviteFriend, start: (b) => [b.x1, b.y1 - 76] });
+    $('btn-add').addEventListener('click', openQuest);
+    $('q-next').addEventListener('click', questAdvance);
+    $('q-back').addEventListener('click', questBack);
+    $('q-cancel').addEventListener('click', () => show('home'));
+    $('k-exp').addEventListener('click', () => setKind('expense'));
+    $('k-inc').addEventListener('click', () => setKind('income'));
+    $('p-cash').addEventListener('click', () => setPay('cash'));
+    $('p-card').addEventListener('click', () => { setPay('card'); if (!$('f-card').value) $('f-card').focus(); });
     $('tg-theme').addEventListener('click', () => { const next = settings.get('theme', 'dark') === 'light' ? 'dark' : 'light'; settings.set('theme', next); applyTheme(next); });
     applyTheme(settings.get('theme', 'dark'));
     $('welcome-form').addEventListener('submit', (e) => {
