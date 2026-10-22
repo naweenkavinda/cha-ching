@@ -29,6 +29,39 @@
     }
   };
 
+  const Sfx = (() => {
+    let ctx = null;
+    const NOTES = {
+      tap: [[880, 0, .16, .1], [1318, .04, .2, .06]],
+      tab: [[784, 0, .14, .09], [1175, .05, .18, .05]],
+      primary: [[659, 0, .2, .1], [880, .07, .22, .09], [1318, .14, .3, .08]],
+      snap: [[1046, 0, .1, .1], [1568, .05, .18, .08]],
+      ok: [[523, 0, .22, .1], [659, .09, .22, .09], [784, .18, .24, .09], [1046, .27, .4, .09]]
+    };
+    function play(kind) {
+      if (!settings.get('sound', true) || !NOTES[kind]) return;
+      try {
+        ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
+        if (ctx.state === 'suspended') ctx.resume();
+        const t0 = ctx.currentTime;
+        NOTES[kind].forEach((n) => {
+          const o = ctx.createOscillator();
+          const g = ctx.createGain();
+          o.type = 'sine';
+          o.frequency.value = n[0];
+          g.gain.setValueAtTime(0.0001, t0 + n[1]);
+          g.gain.exponentialRampToValueAtTime(n[3], t0 + n[1] + .012);
+          g.gain.exponentialRampToValueAtTime(0.0001, t0 + n[1] + n[2]);
+          o.connect(g);
+          g.connect(ctx.destination);
+          o.start(t0 + n[1]);
+          o.stop(t0 + n[1] + n[2] + .05);
+        });
+      } catch (e) { }
+    }
+    return { play };
+  })();
+
   const ua = navigator.userAgent;
   const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   const isIOSSafari = isIOS && !/CriOS|FxiOS|EdgiOS|OPiOS|GSA\//.test(ua);
@@ -155,8 +188,29 @@
     });
   }
 
+  function turnPage(forward) {
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const main = $('main');
+    const r = main.getBoundingClientRect();
+    const top = Math.max(0, r.top);
+    const wrap = el('div', { class: 'leaf-wrap', 'aria-hidden': 'true' });
+    wrap.style.top = top + 'px';
+    wrap.style.height = Math.max(0, window.innerHeight - top) + 'px';
+    const clone = main.cloneNode(true);
+    clone.removeAttribute('id');
+    clone.querySelectorAll('[id]').forEach((n) => n.removeAttribute('id'));
+    clone.querySelectorAll('video, input, textarea, select, button, a').forEach((n) => n.setAttribute('tabindex', '-1'));
+    clone.style.marginTop = Math.min(0, r.top) + 'px';
+    const leaf = el('div', { class: 'leaf ' + (forward ? 'fwd' : 'back') }, [clone]);
+    wrap.appendChild(leaf);
+    document.body.appendChild(wrap);
+    setTimeout(() => wrap.remove(), 1000);
+  }
+
   function show(view, tab) {
     const from = VIEWS.findIndex((v) => !$('view-' + v).hidden);
+    const target = VIEWS.indexOf(view);
+    if (from >= 0 && from !== target) turnPage(target > from);
     VIEWS.forEach((v) => { $('view-' + v).hidden = v !== view; });
     document.querySelectorAll('.tab').forEach((b) => {
       if (b.dataset.view === (tab || view)) b.setAttribute('aria-current', 'page');
@@ -524,6 +578,7 @@
       $('btn-save').disabled = false;
     }
     requestPersist();
+    Sfx.play('ok');
     await loadAll();
     if (state.filter !== 'all' && state.filter !== date.slice(0, 7)) { state.filter = date.slice(0, 7); settings.set('filter', state.filter); }
     resetScan();
@@ -836,8 +891,19 @@
 
     document.addEventListener('click', (e) => {
       const b = e.target.closest && e.target.closest('.btn, .btn-link, .tab, .item, .shutter');
-      if (b) replay(b.classList.contains('tab') ? b.querySelector('.ic') : b, 'pop');
+      if (!b) return;
+      replay(b.classList.contains('tab') ? b.querySelector('.ic') : b, 'pop');
+      if (b.id === 'btn-save') return;
+      Sfx.play(b.classList.contains('shutter') ? 'snap' : b.classList.contains('tab') ? 'tab' : b.classList.contains('btn-primary') ? 'primary' : 'tap');
     });
+    const applySound = () => {
+      const on = settings.get('sound', true);
+      $('snd-on').setAttribute('aria-pressed', String(on));
+      $('snd-off').setAttribute('aria-pressed', String(!on));
+    };
+    $('snd-on').addEventListener('click', () => { settings.set('sound', true); applySound(); });
+    $('snd-off').addEventListener('click', () => { settings.set('sound', false); applySound(); });
+    applySound();
 
     $('btn-snap').addEventListener('click', onSnap);
     $('btn-sheet').addEventListener('click', () => show('expenses'));
