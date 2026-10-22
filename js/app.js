@@ -36,6 +36,7 @@
       tab: [[784, 0, .16, .28], [1175, .05, .2, .16]],
       primary: [[659, 0, .22, .3], [880, .07, .24, .26], [1318, .14, .34, .24]],
       snap: [[1046, 0, .12, .3], [1568, .05, .2, .24]],
+      warn: [[392, 0, .22, .3], [330, .16, .26, .3], [262, .34, .4, .3]],
       ok: [[523, 0, .24, .3], [659, .09, .24, .27], [784, .18, .26, .27], [1046, .27, .46, .27]]
     };
     const iosLike = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -629,6 +630,78 @@
     await loadAll();
     show('home');
     toast((income ? 'Income added' : 'Cost added') + ' \u00b7 entry ' + state.all.length);
+    limitAfterSave();
+  }
+
+  const dailyLimit = () => {
+    const l = settings.get('dailyLimit', null);
+    return l && typeof l.amount === 'number' && l.amount > 0 && CURRENCIES.indexOf(l.currency) >= 0 ? l : null;
+  };
+  const isCheat = () => settings.get('cheatDay', '') === today();
+  function spentToday() {
+    const l = dailyLimit();
+    if (!l) return 0;
+    return state.all.filter((r) => r.date === today() && !isInc(r) && r.currency === l.currency && typeof r.amount === 'number').reduce((a, r) => a + r.amount, 0);
+  }
+  const overLimit = () => { const l = dailyLimit(); return !!l && spentToday() > l.amount; };
+
+  function renderLimit() {
+    const l = dailyLimit();
+    const sp = spentToday();
+    const over = !!l && sp > l.amount;
+    const cheat = isCheat();
+    const alarm = over && !cheat;
+    $('home-card').classList.toggle('over', alarm);
+    $('btn-limit').classList.toggle('over', alarm);
+    $('tg-cheat-wrap').hidden = !l;
+    $('tg-cheat').setAttribute('aria-checked', String(cheat));
+    $('home-limit').hidden = !l;
+    const btn = $('btn-limit');
+    btn.textContent = '';
+    btn.appendChild(el('span', { text: "That's it for today" }));
+    if (l) btn.appendChild(el('span', { class: 'limit-sub', text: 'Limit ' + numFmt.format(l.amount) + ' ' + l.currency }));
+    if (!l) return;
+    $('lim-fill').style.width = Math.min(100, (sp / l.amount) * 100) + '%';
+    $('lim-fill').classList.toggle('over', over);
+    $('home-limit-text').textContent = over
+      ? (cheat ? 'Cheat day is on. Limit paused, enjoy.' : 'Over the limit by ' + numFmt.format(sp - l.amount) + ' ' + l.currency + '. Flip Cheat day to stop the alarm.')
+      : numFmt.format(l.amount - sp) + ' ' + l.currency + ' left of ' + numFmt.format(l.amount);
+  }
+
+  function openLimit() {
+    const l = dailyLimit();
+    const sel = $('ld-cur');
+    if (!sel.options.length) CURRENCIES.forEach((c) => sel.appendChild(new Option(c + ' \u2013 ' + CURRENCY_NAMES[c], c)));
+    sel.value = l ? l.currency : defaultCurrency();
+    $('ld-sym').textContent = SYMBOLS[sel.value] || sel.value;
+    $('ld-amount').value = l ? numFmt.format(l.amount) : '';
+    $('ld-err').textContent = '';
+    $('ld-remove').hidden = !l;
+    $('limit-dialog').hidden = false;
+    setTimeout(() => { try { $('ld-amount').focus(); } catch (e) { } }, 250);
+  }
+  function closeLimit() { $('limit-dialog').hidden = true; }
+  function saveLimit() {
+    const n = parseAmount($('ld-amount').value);
+    if (n === null || n <= 0) { $('ld-err').textContent = 'Enter an amount above zero.'; return; }
+    settings.set('dailyLimit', { amount: Math.round(n * 100) / 100, currency: $('ld-cur').value });
+    closeLimit();
+    renderHome();
+    toast('Daily limit set');
+    Sfx.play('ok');
+  }
+  function removeLimit() {
+    settings.set('dailyLimit', null);
+    settings.set('cheatDay', '');
+    closeLimit();
+    renderHome();
+    toast('Limit removed');
+  }
+  function limitAfterSave() {
+    if (overLimit() && !isCheat()) {
+      Sfx.play('warn');
+      setTimeout(() => toast("Over today's limit! Flip Cheat day to stop the alarm.", 5000), 1800);
+    }
   }
 
   function greeting(h) {
@@ -650,6 +723,7 @@
     const tb = $('home-totals');
     fillTotals(tb, sumsOf(rows), (n) => numFmt.format(n));
     if (!rows.length) tb.appendChild(el('p', { class: 'none', text: 'Nothing yet today.' }));
+    renderLimit();
   }
 
   function applyTheme(t) {
@@ -978,7 +1052,7 @@
     if (state.filter !== 'all' && state.filter !== date.slice(0, 7)) { state.filter = date.slice(0, 7); settings.set('filter', state.filter); }
     resetScan();
     if (wasEditing) { show('expenses'); toast('Changes saved'); }
-    else toast((formKind === 'income' ? 'Income added' : 'Added to sheet') + ' · entry ' + state.all.length);
+    else { toast((formKind === 'income' ? 'Income added' : 'Added to sheet') + ' · entry ' + state.all.length); limitAfterSave(); }
   }
 
   function onDiscard() {
@@ -1338,6 +1412,20 @@
     Float.add($('fab-settings'), { onTap: () => show('settings', 'home'), start: (b) => [b.x1, b.y1] });
     Float.add($('fab-invite'), { onTap: inviteFriend, start: (b) => [b.x1, b.y1 - 76] });
     $('btn-add').addEventListener('click', openQuest);
+    $('btn-limit').addEventListener('click', openLimit);
+    $('ld-save').addEventListener('click', saveLimit);
+    $('ld-cancel').addEventListener('click', closeLimit);
+    $('ld-remove').addEventListener('click', removeLimit);
+    $('ld-amount').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); saveLimit(); } });
+    $('ld-cur').addEventListener('change', () => { $('ld-sym').textContent = SYMBOLS[$('ld-cur').value] || $('ld-cur').value; });
+    $('limit-dialog').addEventListener('click', (e) => { if (e.target === $('limit-dialog')) closeLimit(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('limit-dialog').hidden) closeLimit(); });
+    $('tg-cheat').addEventListener('click', () => {
+      const on = !isCheat();
+      settings.set('cheatDay', on ? today() : '');
+      renderHome();
+      toast(on ? 'Cheat day on. No alarms today.' : 'Cheat day off.');
+    });
     $('q-next').addEventListener('click', questAdvance);
     $('q-back').addEventListener('click', questBack);
     $('q-cancel').addEventListener('click', () => show('home'));

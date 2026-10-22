@@ -47,6 +47,7 @@
     <div class="brand">Receipt Snap</div>
     <div class="top-right">
       <div id="top-toggles" class="toggles">
+        <span class="tg" id="tg-cheat-wrap" hidden><span class="tg-emoji" aria-hidden="true">&#127829;</span><button type="button" id="tg-cheat" class="ios-switch" role="switch" aria-checked="false" aria-label="Cheat day"></button></span>
         <span class="tg"><svg class="ic" aria-hidden="true"><use href="#i-sun"/></svg><button type="button" id="tg-theme" class="ios-switch" role="switch" aria-checked="false" aria-label="Light theme"></button></span>
         <span class="tg"><svg class="ic" aria-hidden="true"><use href="#i-sound"/></svg><button type="button" id="tg-sound" class="ios-switch" role="switch" aria-checked="true" aria-label="Sound"></button></span>
       </div>
@@ -88,12 +89,35 @@
     <div id="home-card" class="stamp paper home-card" role="button" tabindex="0" aria-label="Open the sheet">
       <p id="home-count" class="lbl">TODAY</p>
       <div id="home-totals" class="totals"></div>
+      <div id="home-limit" class="home-limit" hidden>
+        <p id="home-limit-text" class="home-limit-text"></p>
+        <div class="lim-bar"><i id="lim-fill"></i></div>
+      </div>
     </div>
+    <button type="button" id="btn-limit" class="btn limit-btn"></button>
     <div class="home-actions">
       <button type="button" id="btn-home-scan" class="btn btn-primary tile"><svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg><span>Scan a receipt</span></button>
       <button type="button" id="btn-add" class="btn tile"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg><span>Add a cost or income</span></button>
     </div>
   </section>
+
+  <div id="limit-dialog" class="dialog" role="dialog" aria-modal="true" aria-labelledby="ld-title" hidden>
+    <div class="dialog-card stamp paper">
+      <div class="q-emoji" aria-hidden="true">&#128721;</div>
+      <h2 id="ld-title" class="big q-title">That's it for today</h2>
+      <p class="q-sub">Set a daily spending limit. If you go over, the card blinks red until you flip Cheat day.</p>
+      <div class="q-amount ld-amount">
+        <span class="q-cur"><span id="ld-sym">Rs</span><select id="ld-cur" aria-label="Currency"></select></span>
+        <input id="ld-amount" class="q-in" type="text" inputmode="decimal" placeholder="0.00" enterkeyhint="done" aria-label="Daily limit">
+      </div>
+      <p id="ld-err" class="q-error" aria-live="polite"></p>
+      <div class="ld-actions">
+        <button type="button" id="ld-save" class="btn btn-primary">Set limit</button>
+        <button type="button" id="ld-cancel" class="btn">Cancel</button>
+      </div>
+      <button type="button" id="ld-remove" class="btn-link ld-remove" hidden>Remove my limit</button>
+    </div>
+  </div>
 
   <section id="view-quest" class="view" aria-labelledby="q-title" hidden>
     <div class="q-top">

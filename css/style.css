@@ -470,3 +470,36 @@ body[data-screen="review"] .toast, body[data-screen="reading"] .toast, body[data
 #home-totals .total-cur { font-size: 12px; }
 #home-totals .none { font-size: 17px; }
 .home-h { margin-bottom: 18px; }
+.ios-switch { width: 40px; height: 24px; border-radius: 12px; }
+.ios-switch::after { width: 20px; height: 20px; }
+.ios-switch[aria-checked="true"]::after { transform: translateX(16px); }
+.ios-switch:active::after { width: 25px; }
+.ios-switch[aria-checked="true"]:active::after { transform: translateX(11px); }
+.toggles { gap: 8px; }
+.tg { gap: 4px; }
+.tg .ic { width: 15px; height: 15px; }
+.tg-emoji { font-size: 15px; line-height: 1; font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; }
+body[data-screen="home"] .brand { font-size: 22px; }
+
+.limit-btn { flex-direction: column; gap: 2px; min-height: 52px; margin: 12px 0 0; font-size: 15px; }
+.limit-sub { font-size: 12px; font-weight: 600; opacity: .85; }
+.home-limit { margin-top: 12px; }
+.home-limit-text { margin: 0 0 6px; font-size: 13px; font-weight: 600; }
+.lim-bar { height: 8px; border: 1.5px solid var(--ink); overflow: hidden; }
+.lim-bar i { display: block; height: 100%; width: 0; background: var(--ink); transition: width .5s var(--ease-out); }
+.lim-bar i.over { background: #e11d1d; }
+
+@keyframes alarm-card { 0%, 100% { background: var(--paper); color: var(--ink); } 50% { background: #e11d1d; color: #fff; } }
+@keyframes alarm-btn { 0%, 100% { background: transparent; color: #ff6b6b; border-color: #ff6b6b; } 50% { background: #e11d1d; color: #fff; border-color: #e11d1d; } }
+.home-card.over { background: #ffd4d0; color: #7a0c0c; outline-color: #e11d1d; animation: alarm-card .9s steps(1, end) infinite; }
+.home-card.over .total-amt, .home-card.over .lbl, .home-card.over .home-limit-text { color: inherit; }
+.limit-btn.over { color: #ff6b6b; border-color: #ff6b6b; animation: alarm-btn .9s steps(1, end) infinite; }
+.home-card.over .lim-bar { border-color: currentColor; }
+
+.dialog { position: fixed; inset: 0; z-index: 70; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(0, 0, 0, .66); }
+.dialog-card { width: 100%; max-width: 420px; padding: 26px 22px 20px; text-align: center; }
+.ld-amount { margin: 14px 0 4px; }
+.ld-actions { display: grid; grid-template-columns: 1.4fr 1fr; gap: 10px; margin-top: 8px; }
+.ld-remove { margin-top: 6px; color: var(--ink-mid); }
+.dialog-card .btn { min-height: 50px; }
+.dialog-card .btn:not(.btn-primary) { color: var(--ink); border-color: var(--ink); }
