@@ -148,8 +148,16 @@
     for (var i = 0; i < lines.length && i < 6; i++) {
       var c = lines[i].replace(/[^A-Za-z0-9\u00C0-\u024F&'.,()\-\/ ]+/g, ' ').replace(/^[^A-Za-z0-9\u00C0-\u024F]+/, '')
         .replace(/[^A-Za-z0-9\u00C0-\u024F.)']+$/, '').replace(/\s+/g, ' ').trim();
+      var trimmed = c.replace(/^(?:[A-Za-z0-9]{1,2}\s+)+/, '').replace(/(?:\s+(?!(?:Co|CO|co)$)[A-Za-z0-9]{1,2})+$/, '');
+      if ((trimmed.match(/[A-Za-z\u00C0-\u024F]/g) || []).length >= 5) c = trimmed;
       var L = (c.match(/[A-Za-z\u00C0-\u024F]/g) || []).length, ns = c.replace(/ /g, '').length;
       if (L < 3 || L / ns < 0.6 || !/[A-Za-z\u00C0-\u024F]{3,}/.test(c) || SHOP_BAD.test(c) || ADDR.test(c) || (/\d/.test(c) && /\bst\b/i.test(c))) continue;
+      var toks = c.split(' ').map(function (w) { return w.replace(/[^A-Za-z\u00C0-\u024F]/g, ''); })
+        .filter(function (x) { return x && !/^[A-Z]{1,2}$/.test(x) && !/^(?:Co|Of|De|La|Le|El|Mc)$/.test(x); });
+      var good = toks.filter(function (x) {
+        return x.length >= 3 && /^(?:[A-Z\u00C0-\u00DE][a-z\u00DF-\u024F]+|[A-Z\u00C0-\u00DE]{2,}|[A-Z][a-z]+[A-Z][a-z]+)$/.test(x);
+      }).length;
+      if (!toks.length || good / toks.length < 0.6) continue;
       return title(c).slice(0, 40).trim();
     }
     return '';

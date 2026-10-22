@@ -694,10 +694,32 @@
       failed = true;
     }
     OCR.release(prepared.canvas);
+    let parsed = failed ? {} : safeParse(text);
+    if (!failed && foundCount(parsed) < 3) {
+      setProgress(96, 'Taking a second look\u2026');
+      try {
+        OCR.configure({ mode: 'v2', psm: '6' });
+        const p2 = await OCR.prepare(file);
+        const t2 = await OCR.recognize(p2.canvas, () => {});
+        OCR.release(p2.canvas);
+        const parsed2 = safeParse(t2);
+        const second = foundCount(parsed2) > foundCount(parsed);
+        const best = second ? parsed2 : parsed;
+        const other = second ? parsed : parsed2;
+        const merged = Object.assign({}, best);
+        if (!isYMD(merged.date) && isYMD(other.date)) merged.date = other.date;
+        if (!merged.shop && other.shop) merged.shop = other.shop;
+        if (typeof merged.amount !== 'number' && typeof other.amount === 'number') merged.amount = other.amount;
+        parsed = merged;
+        if (second) text = t2;
+      } catch (e) { console.warn('Second pass failed', e); }
+      OCR.configure({ mode: 'v2bin', psm: '6' });
+    }
     state.busy = false;
-    const parsed = failed ? {} : safeParse(text);
     openForm(Object.assign({}, parsed, { thumb: prepared.thumb, rawText: text }), 'scan', null, failed);
   }
+
+  const foundCount = (d) => [isYMD(d.date), !!d.shop, typeof d.amount === 'number'].filter(Boolean).length;
 
   function scanHint(d, failed) {
     if (failed) return 'The text reader could not run. The first scan needs an internet connection to download it. You can still fill in the details by hand.';

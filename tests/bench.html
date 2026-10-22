@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>OCR bench</title>
+<style>body{font:14px system-ui;margin:16px}pre{white-space:pre-wrap}table{border-collapse:collapse}td,th{border:1px solid #888;padding:3px 8px;text-align:right}</style></head>
+<body><h1>OCR bench</h1><p id="s">idle</p><div id="out"></div>
+<script src="../js/parser.js"></script>
+<script src="../js/ocr.js"></script>
+<script>
+function rng(seed) { return function () { seed |= 0; seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+const SHOPS = [
+  ['GREEN LEAF SUPERMARKET', 'No. 12, Sample Road, Colombo 05', 'Groceries', [['Basmathi Rice 5kg', 1450], ['Red Dhal 1kg', 385], ['Anchor Milk 400g', 1190], ['Coconut', 120], ['Eggs 10pk', 650], ['Bread', 180]]],
+  ['LAKEVIEW PHARMACY', '14 Sample Place, Kandy', 'Health', [['Panadol 500mg', 260], ['Vitamin C 30', 1150], ['Cetirizine 10mg', 180], ['Cough syrup', 540]]],
+  ['LANKA FUEL STATION', 'Sample Junction, Galle', 'Transport & Fuel', [['PETROL 92 10.03 L', 2999]]],
+  ['HARBOUR CAFE', '3 Sample Lane, Colombo 03', 'Food & Dining', [['Chicken Kottu', 1850], ['Lime Juice x2', 900], ['Chocolate Cake', 750], ['Iced Coffee', 650]]],
+  ['KEELLS SUPER', 'Sample Mall, Colombo 07', 'Groceries', [['Chicken 1kg', 1290], ['Tomato 500g', 220], ['Curd Pot', 320], ['Tea 200g', 780], ['Sugar 1kg', 290]]],
+  ['CITY STATIONERS', '88 Sample Street, Matara', 'Office & Business', [['A4 Paper Ream', 1650], ['Pens x12', 840], ['Stapler', 560]]],
+  ['SUNRISE BAKERY', '9 Sample Road, Negombo', 'Food & Dining', [['Fish Bun x4', 360], ['Chicken Roll x2', 320], ['Tea x2', 180]]],
+  ['ORCHID FASHION', 'Sample Plaza, Colombo 04', 'Shopping', [['Cotton Shirt', 3490], ['Belt', 1290], ['Socks 3pk', 690]]],
+  ['TECH WORLD ELECTRONICS', 'Sample Arcade, Colombo 11', 'Shopping', [['USB Cable', 990], ['Phone Case', 1450], ['Charger 20W', 2890]]],
+  ['PERERA & SONS HARDWARE', '21 Sample Road, Kurunegala', 'Shopping', [['Paint 1L', 2450], ['Brush set', 780], ['Nails 1kg', 620], ['Tape', 190]]]
+];
+function pad2(n) { return String(n).padStart(2, '0'); }
+function money(n) { return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+function makeCase(i, r) {
+  const s = SHOPS[i % SHOPS.length];
+  const day = 1 + Math.floor(r() * 21), mon = 8 + Math.floor(r() * 2);
+  const date = '2026-' + pad2(mon) + '-' + pad2(day);
+  const dateText = pad2(day) + '/' + pad2(mon) + '/2026';
+  const sub = s[3].reduce((a, b) => a + b[1], 0);
+  const disc = r() < 0.3 ? Math.round(sub * 0.05) : 0;
+  const total = sub - disc;
+  const W = 32;
+  const row = (a, b) => (a.length + b.length >= W ? a.slice(0, W - b.length - 1) : a) + ' '.repeat(Math.max(1, W - Math.min(a.length, W - b.length - 1) - b.length)) + b;
+  const center = (t) => ' '.repeat(Math.max(0, Math.floor((W - t.length) / 2))) + t;
+  const lines = [center(s[0]), center(s[1]), center('Tel: 011 0000000'), 'Date: ' + dateText + '  ' + pad2(9 + Math.floor(r() * 10)) + ':' + pad2(Math.floor(r() * 60)), 'Bill No: ' + (1000 + Math.floor(r() * 8000)), '-'.repeat(W)];
+  s[3].forEach((it) => lines.push(row(it[0], money(it[1]))));
+  lines.push('-'.repeat(W));
+  lines.push(row('SUB TOTAL', money(sub)));
+  if (disc) lines.push(row('Discount', '-' + money(disc)));
+  lines.push(row('TOTAL Rs', money(total)));
+  const cash = Math.ceil(total / 500) * 500;
+  lines.push(row('CASH', money(cash)));
+  lines.push(row('CHANGE', money(cash - total)));
+  lines.push(center('Thank you, come again'));
+  return { shop: s[0], date, total, category: s[2], lines };
+}
+
+function render(c, r, hard) {
+  const fonts = ['Courier New', 'Consolas', 'Lucida Console'];
+  const font = fonts[Math.floor(r() * fonts.length)];
+  const S = 24, LH = Math.round(S * 1.3);
+  const rw = 560, rh = c.lines.length * LH + 90;
+  const rc = document.createElement('canvas'); rc.width = rw; rc.height = rh;
+  const x = rc.getContext('2d');
+  x.fillStyle = '#f6f4ee'; x.fillRect(0, 0, rw, rh);
+  const faded = hard && r() < 0.5;
+  x.fillStyle = faded ? '#6a6a6a' : '#1c1c1c';
+  x.font = (r() < 0.5 ? 'bold ' : '') + S + 'px "' + font + '", monospace';
+  c.lines.forEach((l, i) => x.fillText(l, 22, 52 + i * LH));
+  const PW = 2400, PH = 3200;
+  const p = document.createElement('canvas'); p.width = PW; p.height = PH;
+  const g = p.getContext('2d');
+  g.fillStyle = '#6a5a48'; g.fillRect(0, 0, PW, PH);
+  for (let k = 0; k < 400; k++) { g.fillStyle = 'rgba(' + (60 + r() * 60) + ',' + (50 + r() * 40) + ',' + (30 + r() * 30) + ',.25)'; g.fillRect(r() * PW, r() * PH, 40 + r() * 300, 4 + r() * 10); }
+  const frac = hard ? 0.38 + r() * 0.3 : 0.55 + r() * 0.2;
+  const sc = (PW * frac) / rw;
+  const ang = (r() * 14 - 7) * Math.PI / 180, shear = (r() - 0.5) * 0.08;
+  g.save();
+  g.translate(PW / 2 + (r() - 0.5) * 200, PH / 2 + (r() - 0.5) * 200);
+  g.rotate(ang); g.transform(1, shear, 0, 1, 0, 0); g.scale(sc, sc);
+  g.shadowColor = 'rgba(0,0,0,.5)'; g.shadowBlur = 40; g.shadowOffsetX = 12; g.shadowOffsetY = 18;
+  g.filter = 'blur(' + (0.6 + r() * (hard ? 2.2 : 1.2)) + 'px)';
+  g.drawImage(rc, -rw / 2, -rh / 2);
+  g.restore();
+  const gr = g.createLinearGradient(r() * PW, 0, r() * PW, PH);
+  const dark = 0.15 + r() * (hard ? 0.45 : 0.25);
+  gr.addColorStop(0, 'rgba(0,0,0,' + dark + ')'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, PW, PH);
+  const id = g.getImageData(0, 0, PW, PH), d = id.data, nz = hard ? 26 : 14;
+  for (let k = 0; k < d.length; k += 4) { const n = (r() - 0.5) * nz; d[k] += n; d[k + 1] += n; d[k + 2] += n; }
+  g.putImageData(id, 0, 0);
+  return p;
+}
+
+function lev(a, b) { const m = []; for (let i = 0; i <= a.length; i++) { m[i] = [i]; } for (let j = 0; j <= b.length; j++) m[0][j] = j; for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) m[i][j] = Math.min(m[i - 1][j] + 1, m[i][j - 1] + 1, m[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); return m[a.length][b.length]; }
+const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z]/g, '');
+function score(c, res) {
+  const a = norm(c.shop), b = norm(res.shop);
+  const sim = a && b ? 1 - lev(a, b) / Math.max(a.length, b.length) : 0;
+  return { date: res.date === c.date, amount: res.amount != null && Math.abs(res.amount - c.total) < 0.01, shop: sim >= 0.7, cat: res.category === c.category };
+}
+
+const CONFIGS = [
+  { name: 'A  old: stretch + PSM4', mode: 'v1', psm: '4', maxSide: 1800, minSide: 1100 },
+  { name: 'B  new: normalise + deskew + PSM6', mode: 'v2', psm: '6', maxSide: 2200, minSide: 1400 },
+  { name: 'C  new: normalise + deskew + PSM4', mode: 'v2', psm: '4', maxSide: 2200, minSide: 1400 },
+  { name: 'D  new: binary + deskew + PSM6', mode: 'v2bin', psm: '6', maxSide: 2200, minSide: 1400 },
+  { name: 'E  new: normalise, no deskew, PSM6', mode: 'v2', psm: '6', maxSide: 2200, minSide: 1400, deskew: false }
+];
+
+window.__bench = { done: false, rows: [], log: [] };
+async function run(n, hard, only) {
+  const r = rng(12345);
+  const cases = [], blobs = [];
+  for (let i = 0; i < n; i++) {
+    const c = makeCase(i, r); const cv = render(c, r, hard);
+    blobs.push(await new Promise((res) => cv.toBlob(res, 'image/jpeg', 0.6 + r() * 0.2)));
+    cases.push(c); cv.width = cv.height = 0;
+  }
+  const cfgs = only ? CONFIGS.filter((c) => only.indexOf(c.name[0]) >= 0) : CONFIGS;
+  for (const cfg of cfgs) {
+    OCR.configure(Object.assign({ deskew: true, timeoutMs: 15000 }, cfg));
+    const tot = { date: 0, amount: 0, shop: 0, cat: 0 }; let ms = 0; const detail = [];
+    for (let i = 0; i < n; i++) {
+      document.getElementById('s').textContent = cfg.name + ' ' + (i + 1) + '/' + n;
+      const t0 = performance.now();
+      const prep = await OCR.prepare(new File([blobs[i]], 'x.jpg', { type: 'image/jpeg' }));
+      let text = ''; let timedOut = 0; try { text = await OCR.recognize(prep.canvas); } catch (e) { timedOut = 1; window.__bench.timeouts = (window.__bench.timeouts || 0) + 1; }
+      OCR.release(prep.canvas);
+      ms += performance.now() - t0;
+      const res = ReceiptParser.parse(text, { today: new Date(2026, 9, 22) });
+      const sc = score(cases[i], res);
+      for (const k in tot) if (sc[k]) tot[k]++;
+      detail.push({ i, truth: [cases[i].shop, cases[i].date, cases[i].total], got: [res.shop, res.date, res.amount], ok: [+sc.shop, +sc.date, +sc.amount] });
+    }
+    window.__bench.rows.push({ name: cfg.name, n, hard: !!hard, date: tot.date, amount: tot.amount, shop: tot.shop, cat: tot.cat, secPerImg: +(ms / n / 1000).toFixed(1), detail });
+    document.getElementById('out').innerHTML = '<table><tr><th>config</th><th>shop</th><th>date</th><th>total</th><th>category</th><th>s/img</th></tr>' + window.__bench.rows.map((x) => '<tr><td style="text-align:left">' + x.name + (x.hard ? ' (hard)' : '') + '</td><td>' + x.shop + '/' + x.n + '</td><td>' + x.date + '/' + x.n + '</td><td>' + x.amount + '/' + x.n + '</td><td>' + x.cat + '/' + x.n + '</td><td>' + x.secPerImg + '</td></tr>').join('') + '</table>';
+  }
+  window.__bench.done = true; document.getElementById('s').textContent = 'done';
+}
+</script></body></html>
