@@ -204,7 +204,9 @@
     const leaf = el('div', { class: 'leaf ' + (forward ? 'fwd' : 'back') }, [clone]);
     wrap.appendChild(leaf);
     document.body.appendChild(wrap);
-    setTimeout(() => wrap.remove(), 1000);
+    const done = () => wrap.remove();
+    leaf.addEventListener('animationend', (e) => { if (e.target === leaf) done(); });
+    setTimeout(done, 1000);
   }
 
   function show(view, tab) {
