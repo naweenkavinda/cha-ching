@@ -493,3 +493,13 @@ body[data-screen="review"] .toast, body[data-screen="reading"] .toast, body[data
 .seg { border: 2.5px solid var(--orange); border-radius: 14px; box-shadow: 0 5px 0 var(--edge-2); }
 .seg button { min-height: 42px; font-weight: 700; }
 .seg button[aria-pressed="true"] { box-shadow: inset 0 3px 0 var(--gloss), inset 0 -3px 0 rgba(0, 0, 0, .14); }
+.btn { border-radius: 10px; }
+.btn-sm { border-radius: 9px; }
+.fab { border-radius: 18px; }
+.fab-emoji { font-size: 32px; font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; }
+.fab-emoji span { filter: drop-shadow(0 2px 0 rgba(0, 0, 0, .25)); }
+.shutter { border-radius: 26px; }
+.shutter span { border-radius: 18px; }
+.q-choice { border-radius: 14px; }
+.seg { border-radius: 10px; }
+.seg button[aria-pressed="true"] { border-radius: 0; }
