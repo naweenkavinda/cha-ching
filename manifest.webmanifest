@@ -1,0 +1,17 @@
+{
+  "id": "./",
+  "name": "Receipt Snap",
+  "short_name": "Receipt Snap",
+  "description": "Snap a receipt, read it on your device and keep a simple expense sheet.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f5fa",
+  "theme_color": "#4f46e5",
+  "categories": ["finance", "productivity"],
+  "icons": [
+    { "src": "./icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

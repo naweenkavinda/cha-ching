@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Parser tests</title>
+<style>
+  :root { --bg: #ffffff; --fg: #1d1d1f; --muted: #6b6b70; --line: #e2e2e6; --ok: #e6f6ea; --okfg: #146c2e; --bad: #fdeaea; --badfg: #a3191d; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #151517; --fg: #ececf0; --muted: #9a9aa2; --line: #2c2c31; --ok: #12301c; --okfg: #7fd99a; --bad: #3a1517; --badfg: #ff9a9a; }
+  }
+  body { background: var(--bg); color: var(--fg); font: 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; margin: 0; padding: 16px; }
+  h1 { font-size: 20px; margin: 0 0 8px; }
+  #summary { font-weight: 600; margin: 0 0 16px; padding: 10px 12px; border-radius: 8px; }
+  #summary.pass { background: var(--ok); color: var(--okfg); }
+  #summary.fail { background: var(--bad); color: var(--badfg); }
+  .wrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; min-width: 760px; }
+  th, td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  td.ok { background: var(--ok); }
+  td.bad { background: var(--bad); color: var(--badfg); }
+  .got { display: block; font-size: 12px; }
+  details pre { white-space: pre-wrap; font-size: 12px; color: var(--muted); margin: 6px 0 0; }
+  .res { font-weight: 700; }
+</style>
+</head>
+<body>
+<h1>Receipt parser tests</h1>
+<p id="summary">Running...</p>
+<div class="wrap">
+<table>
+  <thead><tr><th>#</th><th>Case</th><th>Date</th><th>Shop</th><th>Amount</th><th>Currency</th><th>Category</th><th>Result</th></tr></thead>
+  <tbody id="rows"></tbody>
+</table>
+</div>
+<script src="../js/parser.js"></script>
+<script>
+(function () {
+  var TODAY = new Date(2026, 9, 22);
+  var FIELDS = ['date', 'shop', 'amount', 'currency', 'category'];
+  function T(lines) { return lines.join('\n'); }
+
+  var CASES = [
+    { name: 'Sri Lankan supermarket (net total, cash, balance)', text: T([
+      'KEELLS SUPER',
+      'No. 45, Galle Road, Colombo 03',
+      'Tel: 011 2345678',
+      'VAT Reg No: 114567890-7000',
+      'TAX INVOICE',
+      'Date: 21/10/2026  Time: 18:42',
+      'Bill No: 004512',
+      '----------------------------------------',
+      'Item              Qty   Price    Amount',
+      'Basmathi Rice 5kg  1  1,450.00  1,450.00',
+      'Anchor Milk Powder 400g 1 1,190.00 1,190.00',
+      'Red Dhal 1kg       2   385.00     770.00',
+      'Coconut            3   120.00     360.00',
+      '----------------------------------------',
+      'SUB TOTAL                       3,770.00',
+      'Discount                         -150.00',
+      'NET TOTAL                Rs. 3,620.00',
+      'CASH                            5,000.00',
+      'BALANCE                         1,380.00',
+      'No of Items: 4',
+      'Thank you! Come again'
+    ]), expect: { date: '2026-10-21', shop: 'Keells Super', amount: 3620, currency: 'LKR', category: 'Groceries' } },
+
+    { name: 'Fuel station (amount due, change)', text: T([
+      'LANKA IOC PLC',
+      'IOC FILLING STATION - KOTTAWA',
+      'Dealer: Perera Fuel Mart',
+      'Tel 011-2781234',
+      'Dt: 22-10-2026 07:15',
+      'Pump No: 03  Nozzle: 2',
+      'Product: PETROL 92 OCTANE',
+      'Rate (Rs/L):   299.00',
+      'Volume (L):    10.03',
+      'AMOUNT DUE:  Rs 2,999.00',
+      'CASH         3,000.00',
+      'CHANGE           1.00'
+    ]), expect: { date: '2026-10-22', shop: 'Lanka IOC PLC', amount: 2999, currency: 'LKR', category: 'Transport & Fuel' } },
+
+    { name: 'Pharmacy (grand total, card slip)', text: T([
+      'Healthguard Pharmacy',
+      'Union Place, Colombo 02',
+      'Hotline: 0117 555 555',
+      'INVOICE #: HG-22145',
+      '22.10.2026   10:05 AM',
+      'Panadol 500mg x 2      260.00',
+      'Vitamin C Tab x 30   1,150.00',
+      'Cetirizine 10mg x 10   180.00',
+      'Sub Total            1,590.00',
+      'Total Items: 3',
+      'GRAND TOTAL     LKR 1,590.00',
+      'Card  ************4521',
+      'VISA               1,590.00'
+    ]), expect: { date: '2026-10-22', shop: 'Healthguard Pharmacy', amount: 1590, currency: 'LKR', category: 'Health' } },
+
+    { name: 'Restaurant with service charge + VAT', text: T([
+      'THE GALLERY CAFE',
+      '2 Alfred House Rd, Colombo 03',
+      'Tel: +94 11 2582162',
+      'Table: 12   Pax: 2   Server: Kamal',
+      'Date: 20/10/2026  20:15',
+      '1 Chicken Kottu          1,850.00',
+      '2 Lime Juice x 2           900.00',
+      '1 Chocolate Cake           750.00',
+      'Sub Total                3,500.00',
+      'Service Charge 10%         350.00',
+      'VAT 18%                    693.00',
+      'TOTAL (Incl. Taxes)  Rs 4,543.00',
+      'Card Payment             4,543.00'
+    ]), expect: { date: '2026-10-20', shop: 'The Gallery Cafe', amount: 4543, currency: 'LKR', category: 'Food & Dining' } },
+
+    { name: 'Utility bill payment (header line skipped, ISO date)', text: T([
+      '*** CUSTOMER COPY ***',
+      'DIALOG AXIATA PLC',
+      'Bill Payment Receipt',
+      'Receipt No: DGP/2026/884512',
+      'Account No: 0771234567',
+      'Paid On: 2026-10-19 14:22',
+      'Payment Method: Cash',
+      'Amount Paid: LKR 3,245.75',
+      'Thank You for choosing Dialog'
+    ]), expect: { date: '2026-10-19', shop: 'Dialog Axiata PLC', amount: 3245.75, currency: 'LKR', category: 'Utilities & Bills' } },
+
+    { name: 'US receipt, MM/DD date', text: T([
+      'TARGET',
+      'Store #1234  Minneapolis, MN',
+      '(612) 555-0198',
+      '10/15/2026 03:42 PM',
+      'GROCERY',
+      '  BANANAS          1.29',
+      '  WHOLE MILK       3.49',
+      '  BREAD            2.99',
+      'SUBTOTAL           7.77',
+      'TAX 6.875%         0.53',
+      'TOTAL            $ 8.30',
+      'VISA CHARGE      $ 8.30',
+      'CHANGE DUE       $ 0.00'
+    ]), expect: { date: '2026-10-15', shop: 'Target', amount: 8.30, currency: 'USD', category: 'Groceries' } },
+
+    { name: 'UK receipt in GBP, balance due', text: T([
+      'TESCO',
+      'Express',
+      'Kensington High St London W8',
+      'VAT No. GB 220 4302 31',
+      'Sandwich Meal Deal     £3.85',
+      'Coca Cola 500ml        £1.65',
+      'Walkers Crisps         £0.95',
+      'BALANCE DUE            £6.45',
+      'Contactless            £6.45',
+      'CHANGE                 £0.00',
+      '14/10/26  12:31  ST:2134 OP:12 TE:4'
+    ]), expect: { date: '2026-10-14', shop: 'Tesco', amount: 6.45, currency: 'GBP', category: 'Groceries' } },
+
+    { name: 'EU receipt with 1.234,56 decimals', text: T([
+      'CAFFE ROMA SRL',
+      'Via del Corso 112, Roma',
+      'P.IVA 01234567890',
+      'Data 12/10/2026 Ora 13:05',
+      '2 x Cappuccino        3,00',
+      '1 x Cornetto          1,50',
+      'Vassoio catering  1.230,06',
+      'TOTALE EUR        1.234,56',
+      'CONTANTI          1.250,00',
+      'RESTO                15,44'
+    ]), expect: { date: '2026-10-12', shop: 'Caffe Roma SRL', amount: 1234.56, currency: 'EUR', category: 'Food & Dining' } },
+
+    { name: 'Subtotal, savings, cash tendered and change must not win', text: T([
+      'CARGILLS FOOD CITY',
+      'Kirulapone',
+      'No. 12, High Level Rd, Colombo 06',
+      'Cashier: Nimali   POS 03',
+      'Date 18/10/2026 Time 11:20',
+      'SUGAR 1KG            2 x 290.00     580.00',
+      'WHITE BREAD                         180.00',
+      'EGGS 10PK                           650.00',
+      'SUBTOTAL                          1,410.00',
+      'TOTAL SAVINGS                        60.00',
+      'TOTAL                           1,350.00',
+      'CASH TENDERED                   10,000.00',
+      'CHANGE                           8,650.00',
+      'TOTAL QTY                               4'
+    ]), expect: { date: '2026-10-18', shop: 'Cargills Food City', amount: 1350, currency: 'LKR', category: 'Groceries' } },
+
+    { name: 'OCR-garbled T0TAL, O/l in numbers, stray spaces', text: T([
+      '~~~~~~~~~~~~~~~~',
+      ' *** ARPICO SUPERCENTRE ***',
+      ' Hyde Park Corner, Colombo 02',
+      ' ================',
+      ' 0ate: 2l/1O/2O26',
+      ' Rlce 5kg       1,450.0O',
+      ' Sugar  l kg      29O.00',
+      ' -----------------',
+      ' SUB T0TAL     1,74O.00',
+      ' T0TAL      Rs.1,74O .00',
+      ' CASH       2,000.00',
+      ' BALANCE      260.00'
+    ]), expect: { date: '2026-10-21', shop: 'Arpico Supercentre', amount: 1740, currency: 'LKR', category: 'Groceries' } },
+
+    { name: 'No date on receipt', text: T([
+      'KFC',
+      'Majestic City',
+      'ORDER # 245',
+      'DINE IN',
+      '1 Zinger Burger Meal    1,690.00',
+      '1 Hot & Crispy 2pc        980.00',
+      '1 Pepsi Large             450.00',
+      'NET AMOUNT              3,120.00',
+      'Thank you, visit again'
+    ]), expect: { date: '', shop: 'KFC', amount: 3120, currency: 'LKR', category: 'Food & Dining' } },
+
+    { name: 'Unreadable junk', text: T([
+      "~~~~ ,.,.;; ''",
+      '|| ;: ~~ =',
+      ".-.- --- 1' ..",
+      '@#%& ^^',
+      'ii ll !!'
+    ]), expect: { date: '', shop: '', amount: null, currency: 'LKR', category: 'Other' } },
+
+    { name: 'India, rupee symbol, GST, 05-Oct-2026', text: T([
+      'CHAI POINT',
+      'Indiranagar, Bengaluru',
+      'GSTIN: 29AABCC1234D1Z5',
+      'Bill No: CP-88213   Date: 05-Oct-2026',
+      'Masala Chai x 2        ₹ 120.00',
+      'Samosa x 2             ₹ 80.00',
+      'CGST 2.5%               5.00',
+      'SGST 2.5%               5.00',
+      'Total Payable         ₹ 210.00'
+    ]), expect: { date: '2026-10-05', shop: 'Chai Point', amount: 210, currency: 'INR', category: 'Food & Dining' } },
+
+    { name: 'Ride receipt, Rs 1250/=, no total label (fallback)', text: T([
+      'PickMe',
+      'Trip Receipt',
+      '22 Oct 2026, 08:45 AM',
+      'From: Rajagiriya',
+      'To: Colombo 07',
+      'Distance 8.4 km',
+      'Fare        Rs 1250/=',
+      'Paid by Cash'
+    ]), expect: { date: '2026-10-22', shop: 'PickMe', amount: 1250, currency: 'LKR', category: 'Transport & Fuel' } },
+
+    { name: 'Singapore S$, "Oct 21, 2026"', text: T([
+      'TOAST BOX',
+      'Raffles City #B1-20',
+      'GST Reg No: 201234567K',
+      'Oct 21, 2026  12:10',
+      'Kaya Toast Set       S$ 5.80',
+      'Teh C                S$ 1.90',
+      'Subtotal             S$ 7.70',
+      'GST 9%               S$ 0.69',
+      'Total                S$ 8.39'
+    ]), expect: { date: '2026-10-21', shop: 'Toast Box', amount: 8.39, currency: 'SGD', category: 'Food & Dining' } },
+
+    { name: 'UAE AED, total before VAT excluded', text: T([
+      'TAX INVOICE',
+      'CARREFOUR',
+      'City Centre Deira, Dubai',
+      'TRN: 100234567800003',
+      '22/10/2026 19:05',
+      'Water 1.5L x 6        AED 9.75',
+      'Basmati Rice 5kg      AED 40.01',
+      'Total Before VAT      AED 49.76',
+      'VAT 5%                AED 2.49',
+      'Total Amount Incl VAT AED 52.25',
+      'Paid Card             AED 52.25'
+    ]), expect: { date: '2026-10-22', shop: 'Carrefour', amount: 52.25, currency: 'AED', category: 'Groceries' } },
+
+    { name: 'Cinema, future show date rejected, TOTA1', text: T([
+      'SCOPE CINEMAS',
+      'Colombo City Centre',
+      'E-TICKET',
+      'Movie: Dune Part Three',
+      'Show Date: 25/10/2026 19:30',
+      'Hall 2  Seats: F7, F8',
+      'Booked: 22/10/2026 09:12',
+      'Tickets 2 x 1,800.00',
+      'Convenience Fee 100.00',
+      'TOTA1: LKR 3,700.00'
+    ]), expect: { date: '2026-10-22', shop: 'Scope Cinemas', amount: 3700, currency: 'LKR', category: 'Entertainment' } },
+
+    { name: 'US office supplies, ambiguous 03/04 read as M/D', text: T([
+      'STAPLES',
+      'Store 0421',
+      'Tel (617) 555-0142',
+      '03/04/2026 10:22',
+      'COPY PAPER 8.5X11     2 @ 9.99    19.98',
+      'BIC PENS 12PK                     6.49',
+      'SUBTOTAL                         26.47',
+      'SALES TAX 6.25%                   1.65',
+      'TOTAL                          $28.12',
+      'AMEX                           28.12'
+    ]), expect: { date: '2026-03-04', shop: 'Staples', amount: 28.12, currency: 'USD', category: 'Office & Business' } },
+
+    { name: 'Bakery, DD/MM/YY, TO PAY, Rs 860/=', text: T([
+      'PERERA & SONS',
+      'Bakers & Confectioners',
+      'Nawala Road, Rajagiriya',
+      '05/10/26 16:40  INV 55821',
+      'Fish Bun x 4        360.00',
+      'Chicken Roll x 2    320.00',
+      'Tea x 2             180.00',
+      'TO PAY  Rs. 860/=',
+      'CASH    Rs. 1000/=',
+      'BAL     Rs. 140/='
+    ]), expect: { date: '2026-10-05', shop: 'Perera & Sons', amount: 860, currency: 'LKR', category: 'Food & Dining' } },
+
+    { name: 'Australia A$, amount on line after TOTAL', text: T([
+      'Woolworths',
+      'Bondi Junction NSW 2022',
+      'ABN 88 000 014 675',
+      'Fresh Milk 2L          A$ 3.10',
+      'Avocado x 3            A$ 4.50',
+      'TOTAL',
+      'A$ 7.60',
+      'EFTPOS                 A$ 7.60',
+      'Date 21/10/2026 18:03'
+    ]), expect: { date: '2026-10-21', shop: 'Woolworths', amount: 7.60, currency: 'AUD', category: 'Groceries' } },
+
+    { name: 'Null input with defaultCurrency USD', text: null, opts: { defaultCurrency: 'USD' },
+      expect: { date: '', shop: '', amount: null, currency: 'USD', category: 'Other' } }
+  ];
+
+  var rowsEl = document.getElementById('rows');
+  var pass = 0, total = 0;
+
+  function cell(tr, text, cls, got) {
+    var td = document.createElement('td');
+    td.textContent = text;
+    if (cls) td.className = cls;
+    if (got !== undefined) { var s = document.createElement('span'); s.className = 'got'; s.textContent = 'got: ' + got; td.appendChild(s); }
+    tr.appendChild(td);
+    return td;
+  }
+  function show(v) { return v === null ? 'null' : v === '' ? '(empty)' : String(v); }
+  function same(f, e, a) {
+    if (f === 'amount') return e === null ? a === null : typeof a === 'number' && Math.abs(a - e) < 0.005;
+    return a === e;
+  }
+
+  CASES.forEach(function (c, idx) {
+    total++;
+    var actual, err = '';
+    try {
+      var opts = { today: TODAY };
+      if (c.opts) for (var k in c.opts) opts[k] = c.opts[k];
+      actual = ReceiptParser.parse(c.text, opts) || {};
+    } catch (e) { err = String(e && e.message || e); actual = {}; }
+    var tr = document.createElement('tr'), ok = !err;
+    cell(tr, String(idx + 1));
+    var nameTd = cell(tr, c.name);
+    var det = document.createElement('details'), sum = document.createElement('summary'), pre = document.createElement('pre');
+    sum.textContent = 'text'; pre.textContent = c.text == null ? '(null)' : c.text + (err ? '\n\nERROR: ' + err : '');
+    det.appendChild(sum); det.appendChild(pre); nameTd.appendChild(det);
+    FIELDS.forEach(function (f) {
+      var good = same(f, c.expect[f], actual[f]);
+      if (!good) ok = false;
+      cell(tr, show(c.expect[f]), good ? 'ok' : 'bad', good ? undefined : show(actual[f]));
+    });
+    if (ok) pass++;
+    cell(tr, ok ? 'PASS' : 'FAIL', 'res ' + (ok ? 'ok' : 'bad'));
+    rowsEl.appendChild(tr);
+  });
+
+  (function contract() {
+    total++;
+    var ok = false, note = '';
+    try {
+      var want = ['Groceries', 'Food & Dining', 'Transport & Fuel', 'Shopping', 'Health', 'Utilities & Bills', 'Entertainment', 'Travel', 'Office & Business', 'Other'];
+      var cats = ReceiptParser.CATEGORIES;
+      var odd = [undefined, 123, {}, [], '   ', '\n\n\n', 'TOTAL', 'TOTAL\n'].map(function (x) { return ReceiptParser.parse(x, 'not-an-object'); });
+      ok = JSON.stringify(cats) === JSON.stringify(want) && odd.every(function (r) {
+        return r && typeof r.date === 'string' && typeof r.shop === 'string' && (r.amount === null || typeof r.amount === 'number') &&
+          r.currency === 'LKR' && want.indexOf(r.category) >= 0;
+      });
+      note = ok ? 'CATEGORIES list and odd inputs OK' : 'contract mismatch';
+    } catch (e) { note = 'threw: ' + (e && e.message || e); }
+    var tr = document.createElement('tr');
+    cell(tr, String(total));
+    cell(tr, 'API contract: CATEGORIES, odd inputs never throw');
+    var td = document.createElement('td'); td.colSpan = 5; td.textContent = note; td.className = ok ? 'ok' : 'bad'; tr.appendChild(td);
+    if (ok) pass++;
+    cell(tr, ok ? 'PASS' : 'FAIL', 'res ' + (ok ? 'ok' : 'bad'));
+    rowsEl.appendChild(tr);
+  })();
+
+  var all = pass === total, s = document.getElementById('summary');
+  s.textContent = (all ? 'PASS ' : 'FAIL ') + pass + '/' + total + ' tests passed (today fixed to 2026-10-22)';
+  s.className = all ? 'pass' : 'fail';
+  document.title = (all ? 'PASS ' : 'FAIL ') + pass + '/' + total;
+})();
+</script>
+</body>
+</html>

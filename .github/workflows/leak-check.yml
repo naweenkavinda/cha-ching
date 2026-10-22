@@ -1,0 +1,25 @@
+# Backstop for pushes that skip the local pre-push hook (other computers, web edits,
+# other tools). Runs the same leak check on every push and pull request; a failure
+# marks the commit red and GitHub emails the repo owner.
+name: Leak check
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Scan for private data
+        shell: pwsh
+        env:
+          RANGE: ${{ github.event.before && format('{0}..{1}', github.event.before, github.sha) || '' }}
+        run: ./.github/leak-guard/leak-check.ps1 -Rev HEAD -Messages "$env:RANGE"

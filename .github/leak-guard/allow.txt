@@ -1,0 +1,6 @@
+# Reviewed exceptions for leak-check.ps1. One per line:
+#   <path pattern>  <rule>  [regex the matched text must fit]
+# Keep this list short, and say why each line is here. Never add one just to get past a finding.
+
+# Placeholder addresses used in demos.
+*                  EMAIL     @example\.(com|org|net)$

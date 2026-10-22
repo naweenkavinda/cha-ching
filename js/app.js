@@ -1,0 +1,652 @@
+(() => {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  const CURRENCIES = ['LKR', 'USD', 'EUR', 'GBP', 'INR', 'AUD', 'SGD', 'AED'];
+  const CURRENCY_NAMES = { LKR: 'Sri Lankan rupee', USD: 'US dollar', EUR: 'Euro', GBP: 'British pound', INR: 'Indian rupee', AUD: 'Australian dollar', SGD: 'Singapore dollar', AED: 'UAE dirham' };
+  const CURRENCY_HINTS = {
+    LKR: /\bLKR\b|\bRs\.?(?![a-z])|\u0DBB\u0DD4/i,
+    USD: /\bUSD\b|\$/,
+    EUR: /\bEUR\b|\u20AC/,
+    GBP: /\bGBP\b|\u00A3/,
+    INR: /\bINR\b|\u20B9|\bRs\.?(?![a-z])/i,
+    AUD: /\bAUD\b|A\$/,
+    SGD: /\bSGD\b|S\$/,
+    AED: /\bAED\b|\bDHS?\b|\u062F\.\u0625/i
+  };
+  const Parser = typeof ReceiptParser !== 'undefined' ? ReceiptParser : null;
+  const CATEGORIES = Parser && Array.isArray(Parser.CATEGORIES) && Parser.CATEGORIES.length
+    ? Parser.CATEGORIES.slice()
+    : ['Groceries', 'Food & Dining', 'Transport & Fuel', 'Shopping', 'Health', 'Utilities & Bills', 'Entertainment', 'Travel', 'Office & Business', 'Other'];
+  const FALLBACK_CATEGORY = CATEGORIES.indexOf('Other') >= 0 ? 'Other' : CATEGORIES[CATEGORIES.length - 1];
+
+  const settings = {
+    get(key, def) {
+      try { const v = localStorage.getItem('receipt-snap.' + key); return v === null ? def : JSON.parse(v); } catch (e) { return def; }
+    },
+    set(key, val) {
+      try { localStorage.setItem('receipt-snap.' + key, JSON.stringify(val)); } catch (e) { }
+    }
+  };
+
+  const ua = navigator.userAgent;
+  const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isIOSSafari = isIOS && !/CriOS|FxiOS|EdgiOS|OPiOS|GSA\//.test(ua);
+  const isStandalone = () => (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+
+  const state = { all: [], filter: settings.get('filter', 'all'), mode: 'idle', editing: null, draft: null, busy: false, previewUrl: null, lastPct: 0, installPrompt: null };
+
+  const pad = (n) => String(n).padStart(2, '0');
+  const today = () => { const d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); };
+  const isYMD = (s) => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s);
+  const isImgData = (s) => typeof s === 'string' && /^data:image\/(jpeg|png|webp);base64,/.test(s);
+  const defaultCurrency = () => { const c = settings.get('currency', 'LKR'); return CURRENCIES.indexOf(c) >= 0 ? c : 'LKR'; };
+  const numFmt = new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmtDate = (s) => {
+    if (!isYMD(s)) return 'No date';
+    const [y, m, d] = s.split('-').map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+  };
+  const fmtMonth = (ym) => { const [y, m] = ym.split('-').map(Number); return new Date(y, m - 1, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }); };
+
+  function el(tag, props, children) {
+    const n = document.createElement(tag);
+    if (props) Object.keys(props).forEach((k) => {
+      if (k === 'class') n.className = props[k];
+      else if (k === 'text') n.textContent = props[k];
+      else n.setAttribute(k, props[k]);
+    });
+    (children || []).forEach((c) => { if (c) n.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); });
+    return n;
+  }
+
+  function icon(name) {
+    const svg = document.createElementNS(SVGNS, 'svg');
+    svg.setAttribute('class', 'ic');
+    svg.setAttribute('aria-hidden', 'true');
+    const use = document.createElementNS(SVGNS, 'use');
+    use.setAttribute('href', '#i-' + name);
+    use.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', '#i-' + name);
+    svg.appendChild(use);
+    return svg;
+  }
+
+  let toastTimer = 0;
+  function toast(msg, ms) {
+    const t = $('toast');
+    t.textContent = msg;
+    t.hidden = false;
+    replay(t, 'pop-in');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { t.hidden = true; }, ms || 2800);
+  }
+
+  function fillSelect(sel, values, label) {
+    sel.textContent = '';
+    values.forEach((v) => sel.appendChild(new Option(label ? label(v) : v, v)));
+  }
+
+  function parseAmount(v) {
+    let s = String(v == null ? '' : v).replace(/[^\d.,-]/g, '');
+    if (!/\d/.test(s)) return null;
+    const lc = s.lastIndexOf(',');
+    const ld = s.lastIndexOf('.');
+    if (lc > ld && s.length - lc - 1 <= 2) s = s.replace(/\./g, '').replace(',', '.');
+    else s = s.replace(/,/g, '');
+    const n = parseFloat(s);
+    return isFinite(n) ? Math.round(n * 100) / 100 : null;
+  }
+
+  function safeParse(text) {
+    try { if (Parser && typeof Parser.parse === 'function') return Parser.parse(text || '') || {}; } catch (e) { console.warn('Parser error', e); }
+    return {};
+  }
+
+  function pickCurrency(d, mode) {
+    const c = d.currency;
+    if (CURRENCIES.indexOf(c) < 0) return defaultCurrency();
+    if (mode === 'edit') return c;
+    return d.rawText && CURRENCY_HINTS[c].test(d.rawText) ? c : defaultCurrency();
+  }
+
+  async function loadAll() {
+    try {
+      const rows = await DB.all();
+      rows.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')) || (b.createdAt || 0) - (a.createdAt || 0));
+      state.all = rows;
+    } catch (e) {
+      state.all = [];
+      toast('Storage is not available in this browser mode.', 4500);
+    }
+  }
+
+  function requestPersist() {
+    if (settings.get('persistAsked', false) || !navigator.storage || !navigator.storage.persist) return;
+    settings.set('persistAsked', true);
+    navigator.storage.persist().catch(() => {});
+  }
+
+  const VIEWS = ['scan', 'expenses', 'settings'];
+  const ROLL_SEL = '.view-head, .card, .preview, .capture > *, .list > li, .empty';
+
+  function replay(node, cls) {
+    node.classList.remove(cls);
+    node.getBoundingClientRect();
+    node.classList.add(cls);
+    node.addEventListener('animationend', function done(e) {
+      if (e.target !== node) return;
+      node.classList.remove(cls);
+      node.removeEventListener('animationend', done);
+    });
+  }
+
+  function roll(container) {
+    const items = Array.prototype.filter.call(container.querySelectorAll(ROLL_SEL), (n) => n.getClientRects().length);
+    items.forEach((n) => n.classList.remove('rl'));
+    void container.offsetWidth;
+    items.forEach((n, i) => {
+      n.style.setProperty('--i', Math.min(i, 9));
+      replay(n, 'rl');
+    });
+  }
+
+  function show(view, tab) {
+    const from = VIEWS.findIndex((v) => !$('view-' + v).hidden);
+    VIEWS.forEach((v) => { $('view-' + v).hidden = v !== view; });
+    document.querySelectorAll('.tab').forEach((b) => {
+      if (b.dataset.view === (tab || view)) b.setAttribute('aria-current', 'page');
+      else b.removeAttribute('aria-current');
+    });
+    if (view === 'expenses') renderExpenses();
+    if (view === 'settings') renderSettings();
+    window.scrollTo(0, 0);
+    const to = VIEWS.indexOf(view);
+    if (from !== to) {
+      const v = $('view-' + view);
+      replay(v, to > from ? 'view-in-r' : 'view-in-l');
+      roll(v);
+    }
+  }
+
+  function setMode(mode) {
+    const changed = state.mode !== mode;
+    state.mode = mode;
+    $('capture').hidden = mode !== 'idle';
+    $('work').hidden = mode === 'idle';
+    $('work').classList.toggle('is-review', mode === 'review');
+    $('progress').hidden = mode !== 'reading';
+    $('form').hidden = mode !== 'review';
+    if (changed) roll($('view-scan'));
+  }
+
+  function setPreview(src, isObjectUrl) {
+    if (state.previewUrl) { URL.revokeObjectURL(state.previewUrl); state.previewUrl = null; }
+    const img = $('preview-img');
+    if (src) {
+      if (isObjectUrl) state.previewUrl = src;
+      img.src = src;
+      $('preview').hidden = false;
+    } else {
+      img.removeAttribute('src');
+      $('preview').hidden = true;
+    }
+  }
+
+  function resetScan() {
+    state.editing = null;
+    state.draft = null;
+    $('form').reset();
+    setPreview(null);
+    setMode('idle');
+  }
+
+  function setProgress(pct, text) {
+    const p = Math.max(state.lastPct, Math.min(100, Math.round(pct)));
+    state.lastPct = p;
+    $('progress-fill').style.width = p + '%';
+    $('progress-bar').setAttribute('aria-valuenow', String(p));
+    $('progress-text').textContent = text;
+  }
+
+  const LOAD_STAGES = {
+    'loading tesseract core': [6, 12],
+    'initializing tesseract': [18, 2],
+    'initialized tesseract': [20, 0],
+    'loading language traineddata': [20, 8],
+    'loaded language traineddata': [28, 0],
+    'initializing api': [28, 2],
+    'initialized api': [30, 0]
+  };
+
+  function onOcrProgress(m) {
+    const p = typeof m.progress === 'number' ? m.progress : 0;
+    if (m.status === 'recognizing text') {
+      setProgress(30 + p * 70, 'Reading receipt ' + Math.round(p * 100) + '%');
+    } else {
+      const stage = LOAD_STAGES[m.status] || [6, 0];
+      setProgress(stage[0] + p * stage[1], 'Loading reader\u2026');
+    }
+  }
+
+  async function handleFile(file) {
+    if (!file) return;
+    if (state.busy) { toast('Still reading the last photo\u2026'); return; }
+    if (file.type && !/^image\//.test(file.type)) { toast('Please choose an image file.'); return; }
+    state.busy = true;
+    resetScan();
+    show('scan');
+    setPreview(URL.createObjectURL(file), true);
+    state.lastPct = 0;
+    setMode('reading');
+    setProgress(2, 'Preparing photo\u2026');
+    let prepared;
+    try {
+      prepared = await OCR.prepare(file);
+    } catch (e) {
+      state.busy = false;
+      resetScan();
+      toast('Could not open that image. Try a JPEG or PNG photo.', 4500);
+      return;
+    }
+    setProgress(5, 'Loading reader\u2026');
+    let text = '';
+    let failed = false;
+    try {
+      text = await OCR.recognize(prepared.canvas, onOcrProgress);
+    } catch (e) {
+      console.warn('OCR failed', e);
+      failed = true;
+    }
+    OCR.release(prepared.canvas);
+    state.busy = false;
+    const parsed = failed ? {} : safeParse(text);
+    openForm(Object.assign({}, parsed, { thumb: prepared.thumb, rawText: text }), 'scan', null, failed);
+  }
+
+  function scanHint(d, failed) {
+    if (failed) return 'The text reader could not run. The first scan needs an internet connection to download it. You can still fill in the details by hand.';
+    if (!String(d.rawText || '').trim()) return 'No text was found. Try a sharper photo in good light, or fill in the details by hand.';
+    const found = [isYMD(d.date), !!d.shop, typeof d.amount === 'number'].filter(Boolean).length;
+    if (!found) return 'Could not pick out the details. Open the scanned text below and fill in the form.';
+    if (found < 3) return 'Some details were not found. Please check and fill in the gaps.';
+    return 'Check the details before saving.';
+  }
+
+  function openForm(d, mode, record, failed) {
+    d = d || {};
+    state.editing = record || null;
+    state.draft = { thumb: isImgData(d.thumb) ? d.thumb : '', rawText: typeof d.rawText === 'string' ? d.rawText : '' };
+    $('f-date').value = isYMD(d.date) ? d.date : today();
+    $('f-shop').value = d.shop || '';
+    $('f-amount').value = typeof d.amount === 'number' && isFinite(d.amount) ? d.amount.toFixed(2) : '';
+    $('f-currency').value = pickCurrency(d, mode);
+    $('f-category').value = CATEGORIES.indexOf(d.category) >= 0 ? d.category : FALLBACK_CATEGORY;
+    $('f-note').value = d.note || '';
+    $('raw-text').textContent = state.draft.rawText;
+    $('raw').hidden = !state.draft.rawText.trim();
+    $('raw').open = false;
+    $('form-title').textContent = mode === 'edit' ? 'Edit expense' : mode === 'manual' ? 'New expense' : 'Check the details';
+    const hint = mode === 'scan' ? scanHint(d, failed) : '';
+    $('form-hint').textContent = hint;
+    $('form-hint').hidden = !hint;
+    $('btn-delete').hidden = mode !== 'edit';
+    $('btn-discard').textContent = mode === 'edit' ? 'Cancel' : 'Discard';
+    if (mode !== 'scan') setPreview(state.draft.thumb || null);
+    setMode('review');
+    if (mode === 'manual') $('f-shop').focus();
+  }
+
+  async function onSave(e) {
+    e.preventDefault();
+    const date = $('f-date').value;
+    const amount = parseAmount($('f-amount').value);
+    if (!isYMD(date)) { toast('Please pick a date.'); $('f-date').focus(); return; }
+    if (amount === null) { toast('Please enter the amount.'); $('f-amount').focus(); return; }
+    const now = Date.now();
+    const wasEditing = !!state.editing;
+    const rec = Object.assign({}, state.editing || { createdAt: now }, {
+      date,
+      shop: $('f-shop').value.trim(),
+      amount,
+      currency: $('f-currency').value,
+      category: $('f-category').value,
+      note: $('f-note').value.trim(),
+      thumb: state.draft ? state.draft.thumb : '',
+      rawText: state.draft ? state.draft.rawText : '',
+      updatedAt: now
+    });
+    if (rec.id == null) delete rec.id;
+    $('btn-save').disabled = true;
+    try {
+      await DB.put(rec);
+    } catch (err) {
+      toast('Could not save. Storage may be full or blocked.', 4500);
+      return;
+    } finally {
+      $('btn-save').disabled = false;
+    }
+    requestPersist();
+    await loadAll();
+    if (state.filter !== 'all' && state.filter !== date.slice(0, 7)) { state.filter = date.slice(0, 7); settings.set('filter', state.filter); }
+    resetScan();
+    show('expenses');
+    toast(wasEditing ? 'Changes saved' : 'Expense saved');
+  }
+
+  function onDiscard() {
+    const wasEditing = !!state.editing;
+    resetScan();
+    if (wasEditing) show('expenses');
+  }
+
+  async function onDelete() {
+    if (!state.editing) return;
+    if (!window.confirm('Delete this expense? This cannot be undone.')) return;
+    try { await DB.remove(state.editing.id); } catch (e) { toast('Could not delete that expense.'); return; }
+    await loadAll();
+    resetScan();
+    show('expenses');
+    toast('Expense deleted');
+  }
+
+  function editRecord(r) {
+    if (state.busy) { toast('Wait for the scan to finish first.'); return; }
+    show('scan', 'expenses');
+    openForm(r, 'edit', r);
+  }
+
+  function monthsWithData() {
+    const set = {};
+    state.all.forEach((r) => { const m = String(r.date || '').slice(0, 7); if (/^\d{4}-\d{2}$/.test(m)) set[m] = true; });
+    return Object.keys(set).sort().reverse();
+  }
+
+  function filtered() {
+    return state.filter === 'all' ? state.all : state.all.filter((r) => String(r.date || '').slice(0, 7) === state.filter);
+  }
+
+  function renderRow(r) {
+    let thumb;
+    if (isImgData(r.thumb)) {
+      thumb = el('img', { class: 'thumb', alt: '', loading: 'lazy', decoding: 'async' });
+      thumb.src = r.thumb;
+    } else {
+      thumb = el('span', { class: 'thumb' }, [icon('receipt')]);
+    }
+    const shop = r.shop || 'Unnamed shop';
+    const amount = typeof r.amount === 'number' ? numFmt.format(r.amount) : '-';
+    const btn = el('button', { type: 'button', class: 'item', 'aria-label': shop + ', ' + fmtDate(r.date) + ', ' + (r.currency || '') + ' ' + amount + '. Edit' }, [
+      thumb,
+      el('span', { class: 'item-main' }, [
+        el('span', { class: 'item-shop', text: shop }),
+        el('span', { class: 'item-meta', text: fmtDate(r.date) + ' \u00b7 ' + (r.category || FALLBACK_CATEGORY) })
+      ]),
+      el('span', { class: 'item-amt' }, [
+        el('span', { text: amount }),
+        el('span', { class: 'item-cur', text: r.currency || '' })
+      ])
+    ]);
+    btn.addEventListener('click', () => editRecord(r));
+    return el('li', null, [btn]);
+  }
+
+  function renderExpenses() {
+    const months = monthsWithData();
+    if (state.filter !== 'all' && months.indexOf(state.filter) < 0) state.filter = 'all';
+    const sel = $('month');
+    sel.textContent = '';
+    sel.appendChild(new Option('All months', 'all'));
+    months.forEach((m) => sel.appendChild(new Option(fmtMonth(m), m)));
+    sel.value = state.filter;
+
+    const empty = state.all.length === 0;
+    $('empty').hidden = !empty;
+    $('summary').hidden = empty;
+    $('month-wrap').hidden = empty;
+
+    const rows = filtered();
+    const totals = {};
+    rows.forEach((r) => { if (typeof r.amount === 'number' && isFinite(r.amount)) totals[r.currency] = (totals[r.currency] || 0) + r.amount; });
+    $('summary-count').textContent = rows.length + (rows.length === 1 ? ' expense' : ' expenses') + (state.filter === 'all' ? ' in total' : ' in ' + fmtMonth(state.filter));
+    const tbox = $('totals');
+    tbox.textContent = '';
+    Object.keys(totals).sort((a, b) => totals[b] - totals[a]).forEach((c) => {
+      tbox.appendChild(el('div', { class: 'total' }, [
+        el('span', { class: 'total-cur', text: c }),
+        el('span', { class: 'total-amt', text: numFmt.format(totals[c]) })
+      ]));
+    });
+
+    const list = $('list');
+    const frag = document.createDocumentFragment();
+    rows.forEach((r) => frag.appendChild(renderRow(r)));
+    list.textContent = '';
+    list.appendChild(frag);
+  }
+
+  function renderSettings() {
+    $('s-currency').value = defaultCurrency();
+    const label = state.filter === 'all' ? 'Current filter (all months)' : 'Current filter (' + fmtMonth(state.filter) + ')';
+    $('export-scope').options[0].textContent = label + ' \u00b7 ' + filtered().length;
+    $('export-scope').options[1].textContent = 'All expenses \u00b7 ' + state.all.length;
+    renderInstall();
+  }
+
+  function renderInstall() {
+    const iosHint = isIOSSafari && !isStandalone();
+    const canPrompt = !!state.installPrompt && !isStandalone();
+    $('ios-hint').hidden = !iosHint;
+    $('btn-install').hidden = !canPrompt;
+    $('install-card').hidden = !iosHint && !canPrompt;
+  }
+
+  function csvCell(v) {
+    let s = v == null ? '' : String(v);
+    if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+    return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }
+
+  function toCSV(rows) {
+    const lines = ['Date,Shop,Amount,Currency,Category,Note'];
+    rows.slice().sort((a, b) => String(a.date || '').localeCompare(String(b.date || ''))).forEach((r) => {
+      const amount = typeof r.amount === 'number' && isFinite(r.amount) ? r.amount.toFixed(2) : '';
+      lines.push([csvCell(r.date), csvCell(r.shop), amount, csvCell(r.currency), csvCell(r.category), csvCell(r.note)].join(','));
+    });
+    return '\uFEFF' + lines.join('\r\n') + '\r\n';
+  }
+
+  async function saveFile(content, name, type) {
+    const blob = new Blob([content], { type });
+    if (isIOS && navigator.canShare && navigator.share && typeof File === 'function') {
+      try {
+        const file = new File([blob], name, { type });
+        if (navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: name }); return; }
+      } catch (e) {
+        if (e && e.name === 'AbortError') return;
+      }
+    }
+    const url = URL.createObjectURL(blob);
+    const a = el('a', { href: url, download: name });
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 4000);
+  }
+
+  function exportCSV() {
+    const rows = $('export-scope').value === 'all' ? state.all : filtered();
+    if (!rows.length) { toast('Nothing to export yet.'); return; }
+    saveFile(toCSV(rows), 'expenses-' + today() + '.csv', 'text/csv');
+  }
+
+  function exportBackup() {
+    if (!state.all.length) { toast('Nothing to back up yet.'); return; }
+    const expenses = state.all.map((r) => { const c = Object.assign({}, r); delete c.id; return c; });
+    const data = { app: 'receipt-snap', version: 1, exportedAt: new Date().toISOString(), expenses };
+    saveFile(JSON.stringify(data), 'receipt-snap-backup-' + today() + '.json', 'application/json');
+  }
+
+  function readText(file) {
+    if (file.text) return file.text();
+    return new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(String(fr.result));
+      fr.onerror = () => reject(fr.error);
+      fr.readAsText(file);
+    });
+  }
+
+  function sanitize(r) {
+    if (!r || typeof r !== 'object') return null;
+    const amount = typeof r.amount === 'number' ? r.amount : parseAmount(r.amount);
+    if (!isYMD(r.date) || amount === null || !isFinite(amount)) return null;
+    const str = (v, max) => (typeof v === 'string' ? v.slice(0, max) : '');
+    const now = Date.now();
+    return {
+      date: r.date,
+      shop: str(r.shop, 120),
+      amount: Math.round(amount * 100) / 100,
+      currency: CURRENCIES.indexOf(r.currency) >= 0 ? r.currency : defaultCurrency(),
+      category: CATEGORIES.indexOf(r.category) >= 0 ? r.category : FALLBACK_CATEGORY,
+      note: str(r.note, 500),
+      thumb: isImgData(r.thumb) && r.thumb.length < 400000 ? r.thumb : '',
+      rawText: str(r.rawText, 20000),
+      createdAt: Number.isFinite(r.createdAt) ? r.createdAt : now,
+      updatedAt: Number.isFinite(r.updatedAt) ? r.updatedAt : now
+    };
+  }
+
+  const recordKey = (r) => [r.date, r.shop, r.amount, r.currency, r.createdAt].join('|');
+
+  async function importBackup(file) {
+    let data;
+    try { data = JSON.parse(await readText(file)); } catch (e) { toast('That file is not a valid backup.'); return; }
+    const list = Array.isArray(data) ? data : data && Array.isArray(data.expenses) ? data.expenses : null;
+    if (!list) { toast('That file is not a valid backup.'); return; }
+    const seen = {};
+    state.all.forEach((r) => { seen[recordKey(r)] = true; });
+    const fresh = list.map(sanitize).filter((r) => {
+      if (!r) return false;
+      const k = recordKey(r);
+      if (seen[k]) return false;
+      seen[k] = true;
+      return true;
+    });
+    if (!fresh.length) { toast('No new expenses found in that backup.'); return; }
+    if (!window.confirm('Import ' + fresh.length + (fresh.length === 1 ? ' expense' : ' expenses') + '? They will be added to what is already here.')) return;
+    try { await DB.addMany(fresh); } catch (e) { toast('Import failed. Storage may be full.'); return; }
+    requestPersist();
+    await loadAll();
+    renderSettings();
+    toast('Imported ' + fresh.length + (fresh.length === 1 ? ' expense' : ' expenses'));
+  }
+
+  async function clearAll() {
+    if (!state.all.length) { toast('There is nothing to clear.'); return; }
+    if (!window.confirm('Delete all ' + state.all.length + ' expenses from this device? Export a backup first if you might need them.')) return;
+    try { await DB.clear(); } catch (e) { toast('Could not clear the data.'); return; }
+    state.filter = 'all';
+    settings.set('filter', 'all');
+    await loadAll();
+    renderSettings();
+    toast('All data cleared');
+  }
+
+  const hasFiles = (e) => !!e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types || [], 'Files') >= 0;
+  const firstImage = (files) => Array.prototype.find.call(files || [], (f) => /^image\//.test(f.type));
+
+  function bindDragDrop() {
+    let depth = 0;
+    const overlay = $('drop');
+    document.addEventListener('dragenter', (e) => { if (!hasFiles(e)) return; e.preventDefault(); depth++; overlay.hidden = false; });
+    document.addEventListener('dragover', (e) => { if (!hasFiles(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
+    document.addEventListener('dragleave', (e) => { if (!hasFiles(e)) return; depth = Math.max(0, depth - 1); if (!depth) overlay.hidden = true; });
+    document.addEventListener('drop', (e) => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+      depth = 0;
+      overlay.hidden = true;
+      const f = firstImage(e.dataTransfer.files);
+      if (f) handleFile(f); else toast('Drop an image file to scan it.');
+    });
+    document.addEventListener('paste', (e) => {
+      const t = e.target;
+      if (t && /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return;
+      const f = e.clipboardData && firstImage(e.clipboardData.files);
+      if (f) { e.preventDefault(); handleFile(f); }
+    });
+  }
+
+  function bindInstall() {
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      state.installPrompt = e;
+      renderInstall();
+    });
+    window.addEventListener('appinstalled', () => {
+      state.installPrompt = null;
+      renderInstall();
+      toast('Receipt Snap installed');
+    });
+    $('btn-install').addEventListener('click', async () => {
+      const p = state.installPrompt;
+      if (!p) return;
+      state.installPrompt = null;
+      try { p.prompt(); await p.userChoice; } catch (e) { }
+      renderInstall();
+    });
+  }
+
+  function init() {
+    fillSelect($('f-currency'), CURRENCIES);
+    fillSelect($('s-currency'), CURRENCIES, (c) => c + ' \u2013 ' + CURRENCY_NAMES[c]);
+    fillSelect($('f-category'), CATEGORIES);
+    $('s-currency').value = defaultCurrency();
+
+    ['file-camera', 'file-upload'].forEach((id) => {
+      $(id).addEventListener('change', (e) => {
+        const f = e.target.files && e.target.files[0];
+        e.target.value = '';
+        if (f) handleFile(f);
+      });
+    });
+    $('file-import').addEventListener('change', (e) => {
+      const f = e.target.files && e.target.files[0];
+      e.target.value = '';
+      if (f) importBackup(f);
+    });
+
+    document.querySelectorAll('.tab').forEach((b) => b.addEventListener('click', () => {
+      const v = b.dataset.view;
+      if (v === 'scan' && state.editing) resetScan();
+      show(v);
+    }));
+
+    $('btn-manual').addEventListener('click', () => openForm({}, 'manual'));
+    $('btn-first').addEventListener('click', () => { resetScan(); show('scan'); });
+    $('form').addEventListener('submit', onSave);
+    $('btn-discard').addEventListener('click', onDiscard);
+    $('btn-delete').addEventListener('click', onDelete);
+    $('month').addEventListener('change', (e) => { state.filter = e.target.value; settings.set('filter', state.filter); renderExpenses(); roll($('list')); });
+    $('s-currency').addEventListener('change', (e) => { settings.set('currency', e.target.value); toast('Default currency set to ' + e.target.value); });
+    $('btn-csv').addEventListener('click', exportCSV);
+    $('btn-backup').addEventListener('click', exportBackup);
+    $('btn-clear').addEventListener('click', clearAll);
+
+    document.addEventListener('click', (e) => {
+      const b = e.target.closest && e.target.closest('.btn, .btn-link, .tab, .item');
+      if (b) replay(b.classList.contains('tab') ? b.querySelector('.ic') : b, 'pop');
+    });
+
+    bindDragDrop();
+    bindInstall();
+    if (!Parser) console.warn('ReceiptParser not found; fields will not be pre-filled.');
+    loadAll().then(renderSettings);
+
+    if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+      window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js').catch((e) => console.warn('SW registration failed', e)); });
+    }
+  }
+
+  init();
+})();
