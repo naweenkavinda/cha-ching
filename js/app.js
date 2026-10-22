@@ -631,11 +631,19 @@
     toast((income ? 'Income added' : 'Cost added') + ' \u00b7 entry ' + state.all.length);
   }
 
+  function greeting(h) {
+    if (h >= 5 && h < 12) return 'Good morning';
+    if (h >= 12 && h < 17) return 'Good afternoon';
+    if (h >= 17 && h < 21) return 'Good evening';
+    if (h >= 21) return 'Good night';
+    return 'Burning the midnight oil';
+  }
+
   function renderHome() {
     const p = settings.get('profile', null);
     const now = new Date();
     const h = now.getHours();
-    $('home-h').textContent = (h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening') + (p && p.name ? ', ' + p.name : '');
+    $('home-h').textContent = greeting(h) + (p && p.name ? ', ' + p.name : '');
     $('home-date').textContent = now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }).toUpperCase();
     const rows = state.all.filter((r) => r.date === today()).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
     $('home-count').textContent = rows.length ? 'TODAY \u00b7 ' + rows.length + (rows.length === 1 ? ' ENTRY' : ' ENTRIES') : 'TODAY';
@@ -1322,7 +1330,8 @@
         else toast('Motion is off. Allow it in Settings so the buttons float with your phone.', 5000);
       });
     }, true);
-    document.addEventListener('visibilitychange', () => { setPostmark(); syncCam(); });
+    document.addEventListener('visibilitychange', () => { setPostmark(); syncCam(); if (!document.hidden && document.body.dataset.screen === 'home') renderHome(); });
+    setInterval(() => { if (!document.hidden && document.body.dataset.screen === 'home') renderHome(); }, 60000);
 
     $('btn-home-scan').addEventListener('click', () => { resetScan(); show('scan'); });
     Float.setActive(() => document.body.dataset.screen === 'home');
