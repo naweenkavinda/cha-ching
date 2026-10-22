@@ -248,6 +248,19 @@ body.cam-on .ph { display: none; }
 body[data-screen="welcome"] .tabbar { display: none; }
 body[data-screen="welcome"] main { padding-bottom: var(--pad-bottom); }
 .tab { font-size: 10px; letter-spacing: .08em; }
+.fab {
+  display: none; position: fixed; right: max(16px, env(safe-area-inset-right)); bottom: calc(var(--tabbar-h) + 16px + env(safe-area-inset-bottom)); z-index: 18;
+  width: 56px; height: 56px; padding: 0; align-items: center; justify-content: center; border: 0; border-radius: 50%;
+  background: var(--orange); color: var(--ink); cursor: pointer; touch-action: manipulation;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, .4), 0 2px 4px rgba(0, 0, 0, .3);
+  animation: bob-t 3.4s ease-in-out infinite; transition: transform .45s var(--spring);
+}
+.fab .ic { width: 28px; height: 28px; transition: transform .6s var(--spring); }
+.fab:active { transform: scale(.86); }
+.fab:active .ic { transform: rotate(120deg); }
+@media (hover: hover) { .fab:hover .ic { transform: rotate(60deg); } }
+body[data-screen="home"] .fab { display: flex; }
+body[data-screen="home"] #view-home { padding-bottom: 72px; }
 .toggles { display: none; align-items: center; gap: 10px; }
 body[data-screen="home"] .toggles { display: flex; }
 body[data-screen="home"] .brand { font-size: 24px; }
@@ -336,6 +349,7 @@ body[data-screen="review"] .toast, body[data-screen="reading"] .toast { bottom: 
   100% { transform: scale(1); }
 }
 @keyframes ring { 0% { opacity: .85; transform: scale(1); } 100% { opacity: 0; transform: scale(1.3, 1.7); } }
+@keyframes bob-t { 0%, 100% { translate: 0 0; } 50% { translate: 0 -4px; } }
 @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
 @keyframes leaf-fwd {
   0% { transform: rotateY(0) skewY(0); opacity: 1; }

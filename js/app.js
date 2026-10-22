@@ -996,7 +996,7 @@
     $('btn-clear').addEventListener('click', clearAll);
 
     document.addEventListener('click', (e) => {
-      const b = e.target.closest && e.target.closest('.btn, .btn-link, .tab, .item, .shutter');
+      const b = e.target.closest && e.target.closest('.btn, .btn-link, .tab, .item, .shutter, .fab');
       if (!b) return;
       replay(b.classList.contains('tab') ? b.querySelector('.ic') : b, 'pop');
       if (b.id === 'btn-save') return;
@@ -1036,6 +1036,7 @@
     const msg = 'Hi! I use Receipt Snap to keep track of my expenses. Snap a receipt and the sheet fills itself in. It is free and works on your phone: ' + APP_URL;
     $('btn-invite').href = 'https://wa.me/?text=' + encodeURIComponent(msg);
     $('btn-home-scan').addEventListener('click', () => { resetScan(); show('scan'); });
+    $('fab-settings').addEventListener('click', () => show('settings'));
     $('tg-theme').addEventListener('click', () => { const next = settings.get('theme', 'dark') === 'light' ? 'dark' : 'light'; settings.set('theme', next); applyTheme(next); });
     applyTheme(settings.get('theme', 'dark'));
     $('welcome-form').addEventListener('submit', (e) => {
