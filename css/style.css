@@ -460,3 +460,13 @@ body[data-screen="review"] .toast, body[data-screen="reading"] .toast, body[data
   .tab:hover { color: var(--orange); }
   .tab:hover .ic { transform: translateY(-5px) scale(1.3) rotate(-9deg); }
 }
+.home-actions { grid-template-columns: 1fr 1fr; gap: 12px; }
+.home-actions .btn.tile { flex-direction: column; min-height: 150px; gap: 12px; padding: 18px 12px; font-size: 18px; line-height: 1.2; }
+.home-actions .btn.tile .ic { width: 44px; height: 44px; stroke-width: 1.8; }
+.home-actions .btn-primary.tile { font-size: 21px; }
+#btn-add { text-decoration: none; border-color: var(--orange); }
+.home-card { padding: 18px 20px 16px; }
+#home-totals .total-amt { font-size: 28px; }
+#home-totals .total-cur { font-size: 12px; }
+#home-totals .none { font-size: 17px; }
+.home-h { margin-bottom: 18px; }

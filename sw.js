@@ -1,4 +1,4 @@
-const VERSION = 'v26';
+const VERSION = 'v28';
 const SHELL = 'receipt-snap-shell-' + VERSION;
 const CDN = 'receipt-snap-cdn-v1';
 const ASSETS = [

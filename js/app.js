@@ -636,7 +636,7 @@
     if (h >= 12 && h < 17) return 'Good afternoon';
     if (h >= 17 && h < 21) return 'Good evening';
     if (h >= 21) return 'Good night';
-    return 'Burning the midnight oil';
+    return 'Up late';
   }
 
   function renderHome() {
