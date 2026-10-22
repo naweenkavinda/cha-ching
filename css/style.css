@@ -232,7 +232,7 @@ body.cam-on .ph { display: none; }
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: var(--ground); border-top: 1px solid var(--hair-ground);
   padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
-.tabbar-in { max-width: 560px; margin: 0 auto; display: grid; grid-template-columns: repeat(4, 1fr); }
+.tabbar-in { max-width: 560px; margin: 0 auto; display: grid; grid-template-columns: repeat(3, 1fr); }
 .big { font: 700 28px/1.15 var(--font-display); margin: 6px 0 14px; }
 .home-h { color: var(--paper); margin-bottom: 18px; }
 .wel-card { margin: auto 0; padding: 28px 24px 22px; display: flex; flex-direction: column; gap: 6px; }
@@ -259,7 +259,10 @@ body[data-screen="welcome"] main { padding-bottom: var(--pad-bottom); }
 .fab:active { transform: scale(.86); }
 .fab:active .ic { transform: rotate(120deg); }
 @media (hover: hover) { .fab:hover .ic { transform: rotate(60deg); } }
-body[data-screen="home"] .fab { display: flex; }
+body[data-screen="home"] .fab { display: flex; touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; }
+body.fab-drag, body.fab-drag * { user-select: none !important; -webkit-user-select: none !important; }
+.fab.dragging { animation: none; transition: none; cursor: grabbing; transform: scale(1.14); box-shadow: 0 16px 30px rgba(0, 0, 0, .5), 0 4px 8px rgba(0, 0, 0, .3); }
+.fab.dragging .ic { transform: rotate(40deg); }
 body[data-screen="home"] #view-home { padding-bottom: 72px; }
 .toggles { display: none; align-items: center; gap: 10px; }
 body[data-screen="home"] .toggles { display: flex; }

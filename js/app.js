@@ -544,6 +544,57 @@
     show('summary', 'home');
   }
 
+  function initFab() {
+    const fab = $('fab-settings');
+    const M = 8, SIZE = 56, TB = 64;
+    let drag = null, moved = false, justDragged = false;
+    const place = (x, y) => {
+      x = Math.min(Math.max(M, x), window.innerWidth - SIZE - M);
+      y = Math.min(Math.max(M, y), window.innerHeight - TB - SIZE - M);
+      fab.style.left = x + 'px';
+      fab.style.top = y + 'px';
+      fab.style.right = 'auto';
+      fab.style.bottom = 'auto';
+    };
+    const saved = settings.get('fabPos', null);
+    if (saved && typeof saved.fx === 'number') place(saved.fx * window.innerWidth, saved.fy * window.innerHeight);
+    fab.addEventListener('pointerdown', (e) => {
+      const r = fab.getBoundingClientRect();
+      drag = { id: e.pointerId, sx: e.clientX, sy: e.clientY, ox: r.left, oy: r.top };
+      moved = false;
+      document.body.classList.add('fab-drag');
+      try { fab.setPointerCapture(e.pointerId); } catch (err) { }
+    });
+    fab.addEventListener('pointermove', (e) => {
+      if (!drag || e.pointerId !== drag.id) return;
+      const dx = e.clientX - drag.sx, dy = e.clientY - drag.sy;
+      if (!moved && Math.hypot(dx, dy) < 6) return;
+      moved = true;
+      if (window.getSelection) window.getSelection().removeAllRanges();
+      fab.classList.add('dragging');
+      place(drag.ox + dx, drag.oy + dy);
+    });
+    const end = () => {
+      if (!drag) return;
+      drag = null;
+      document.body.classList.remove('fab-drag');
+      fab.classList.remove('dragging');
+      if (moved) {
+        settings.set('fabPos', { fx: parseFloat(fab.style.left) / window.innerWidth, fy: parseFloat(fab.style.top) / window.innerHeight });
+        justDragged = true;
+        setTimeout(() => { justDragged = false; }, 60);
+      }
+    };
+    fab.addEventListener('pointerup', end);
+    fab.addEventListener('pointercancel', end);
+    fab.addEventListener('click', () => { if (!justDragged) show('settings', 'home'); });
+    window.addEventListener('resize', () => {
+      if (!fab.style.left) return;
+      const s = settings.get('fabPos', null);
+      if (s) place(s.fx * window.innerWidth, s.fy * window.innerHeight);
+    });
+  }
+
   function setPostmark() {
     const d = new Date();
     $('pm-mon').textContent = d.toLocaleDateString('en-GB', { month: 'short' }).toUpperCase();
@@ -1036,7 +1087,7 @@
     const msg = 'Hi! I use Receipt Snap to keep track of my expenses. Snap a receipt and the sheet fills itself in. It is free and works on your phone: ' + APP_URL;
     $('btn-invite').href = 'https://wa.me/?text=' + encodeURIComponent(msg);
     $('btn-home-scan').addEventListener('click', () => { resetScan(); show('scan'); });
-    $('fab-settings').addEventListener('click', () => show('settings'));
+    initFab();
     $('tg-theme').addEventListener('click', () => { const next = settings.get('theme', 'dark') === 'light' ? 'dark' : 'light'; settings.set('theme', next); applyTheme(next); });
     applyTheme(settings.get('theme', 'dark'));
     $('welcome-form').addEventListener('submit', (e) => {
