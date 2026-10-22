@@ -7,6 +7,7 @@ const Cam = (() => {
   let blocked = false;
   let granted = false;
   let epoch = 0;
+  let lastErr = '';
 
   const video = () => document.getElementById('cam');
   const notify = () => window.dispatchEvent(new Event('camstate'));
@@ -16,6 +17,7 @@ const Cam = (() => {
     navigator.permissions.query({ name: 'camera' }).then((p) => {
       if (p.state === 'granted') granted = true;
       if (p.state === 'denied') { blocked = true; notify(); }
+      p.onchange = () => { if (p.state === 'granted') { blocked = false; granted = true; } else if (p.state === 'denied') blocked = true; notify(); };
     }).catch(() => { });
   }
 
@@ -43,6 +45,7 @@ const Cam = (() => {
       document.body.classList.add('cam-on');
       try { localStorage.setItem(KEY, '1'); } catch (e) { }
     } catch (e) {
+      lastErr = (e && e.name) || 'Error';
       stream = null;
       blocked = true;
       granted = false;
@@ -83,5 +86,7 @@ const Cam = (() => {
     });
   }
 
-  return { start, stop, capture, state, autostart: () => granted && !blocked };
+  async function retry() { blocked = false; granted = false; lastErr = ''; notify(); await start(); }
+
+  return { start, stop, capture, state, retry, supported: () => supported, lastError: () => lastErr, autostart: () => granted && !blocked };
 })();

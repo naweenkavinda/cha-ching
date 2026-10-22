@@ -30,36 +30,84 @@
   };
 
   const Sfx = (() => {
-    let ctx = null;
+    let ctx = null, master = null, keep = null, done = false;
     const NOTES = {
-      tap: [[880, 0, .16, .1], [1318, .04, .2, .06]],
-      tab: [[784, 0, .14, .09], [1175, .05, .18, .05]],
-      primary: [[659, 0, .2, .1], [880, .07, .22, .09], [1318, .14, .3, .08]],
-      snap: [[1046, 0, .1, .1], [1568, .05, .18, .08]],
-      ok: [[523, 0, .22, .1], [659, .09, .22, .09], [784, .18, .24, .09], [1046, .27, .4, .09]]
+      tap: [[880, 0, .18, .3], [1318, .04, .22, .18]],
+      tab: [[784, 0, .16, .28], [1175, .05, .2, .16]],
+      primary: [[659, 0, .22, .3], [880, .07, .24, .26], [1318, .14, .34, .24]],
+      snap: [[1046, 0, .12, .3], [1568, .05, .2, .24]],
+      ok: [[523, 0, .24, .3], [659, .09, .24, .27], [784, .18, .26, .27], [1046, .27, .46, .27]]
     };
-    function play(kind) {
-      if (!settings.get('sound', true) || !NOTES[kind]) return;
+    const iosLike = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    function silentWav() {
+      const n = 8000, b = new Uint8Array(44 + n), dv = new DataView(b.buffer);
+      const w = (o, t) => { for (let i = 0; i < t.length; i++) b[o + i] = t.charCodeAt(i); };
+      w(0, 'RIFF'); dv.setUint32(4, 36 + n, true); w(8, 'WAVE'); w(12, 'fmt '); dv.setUint32(16, 16, true);
+      dv.setUint16(20, 1, true); dv.setUint16(22, 1, true); dv.setUint32(24, 8000, true); dv.setUint32(28, 8000, true);
+      dv.setUint16(32, 1, true); dv.setUint16(34, 8, true); w(36, 'data'); dv.setUint32(40, n, true);
+      for (let i = 0; i < n; i++) b[44 + i] = 128;
+      return URL.createObjectURL(new Blob([b], { type: 'audio/wav' }));
+    }
+    function setup() {
+      if (ctx) return true;
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return false;
       try {
-        ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
-        if (ctx.state === 'suspended') ctx.resume();
-        const t0 = ctx.currentTime;
-        NOTES[kind].forEach((n) => {
-          const o = ctx.createOscillator();
-          const g = ctx.createGain();
-          o.type = 'sine';
-          o.frequency.value = n[0];
-          g.gain.setValueAtTime(0.0001, t0 + n[1]);
-          g.gain.exponentialRampToValueAtTime(n[3], t0 + n[1] + .012);
-          g.gain.exponentialRampToValueAtTime(0.0001, t0 + n[1] + n[2]);
-          o.connect(g);
-          g.connect(ctx.destination);
-          o.start(t0 + n[1]);
-          o.stop(t0 + n[1] + n[2] + .05);
-        });
+        ctx = new AC();
+        master = ctx.createGain();
+        master.gain.value = 0.9;
+        const comp = ctx.createDynamicsCompressor();
+        master.connect(comp);
+        comp.connect(ctx.destination);
+      } catch (e) { ctx = null; return false; }
+      return true;
+    }
+    function unlock() {
+      if (done || !setup()) return;
+      try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) { }
+      try {
+        const p = ctx.resume();
+        if (p && p.then) p.then(() => { if (ctx.state === 'running') done = true; }).catch(() => { });
+      } catch (e) { }
+      try {
+        const src = ctx.createBufferSource();
+        src.buffer = ctx.createBuffer(1, 1, 22050);
+        src.connect(ctx.destination);
+        src.start(0);
+      } catch (e) { }
+      if (iosLike() && !navigator.audioSession && !keep) {
+        try {
+          keep = new Audio(silentWav());
+          keep.loop = true;
+          keep.setAttribute('playsinline', '');
+          keep.play().catch(() => { keep = null; });
+        } catch (e) { keep = null; }
+      }
+    }
+    function schedule(kind) {
+      const t0 = ctx.currentTime + 0.02;
+      NOTES[kind].forEach((n) => {
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = 'sine';
+        o.frequency.value = n[0];
+        g.gain.setValueAtTime(0.0001, t0 + n[1]);
+        g.gain.exponentialRampToValueAtTime(n[3], t0 + n[1] + .012);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + n[1] + n[2]);
+        o.connect(g);
+        g.connect(master);
+        o.start(t0 + n[1]);
+        o.stop(t0 + n[1] + n[2] + .05);
+      });
+    }
+    function play(kind) {
+      if (!settings.get('sound', true) || !NOTES[kind] || !setup()) return;
+      try {
+        if (ctx.state === 'running') schedule(kind);
+        else ctx.resume().then(() => schedule(kind)).catch(() => { });
       } catch (e) { }
     }
-    return { play };
+    return { play, unlock };
   })();
 
   const ua = navigator.userAgent;
@@ -182,7 +230,7 @@
       box.appendChild(el('div', { class: 'total' }, [el('span', { class: 'total-cur', text: c }), el('span', { class: 'total-amt', text: fmt(sums.spent[c]) })]));
     });
     Object.keys(sums.earned).sort((a, b) => sums.earned[b] - sums.earned[a]).forEach((c) => {
-      box.appendChild(el('div', { class: 'total' }, [el('span', { class: 'total-cur', text: c + ' IN' }), el('span', { class: 'total-amt in', text: '+' + fmt(sums.earned[c]) })]));
+      box.appendChild(el('div', { class: 'total' }, [el('span', { class: 'total-cur', text: c }), el('span', { class: 'total-amt in', text: '+' + fmt(sums.earned[c]) })]));
     });
   }
   const fmtShort = (s) => (isYMD(s) ? ymdDate(s).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—');
@@ -276,9 +324,18 @@
     if (Cam.autostart()) Cam.start();
   }
 
+  function camHelp() {
+    if (isIOS) return 'Camera is blocked. Open Settings, find Safari (or Receipt Snap if installed), turn Camera on, then reload.';
+    if (/Android/.test(navigator.userAgent)) return 'Camera is blocked. Tap the lock icon by the address, choose Permissions, and allow Camera.';
+    return 'Camera is blocked. Allow it from the lock icon next to the address bar.';
+  }
+
   function updateCaption() {
     const s = Cam.state();
-    $('cam-caption').textContent = s === 'on' ? 'Keep the receipt inside the stamp.' : s === 'idle' ? 'Tap SNAP to turn on the camera.' : 'Camera is off. SNAP opens your camera app.';
+    $('cam-caption').textContent = s === 'on' ? 'Keep the receipt inside the stamp.'
+      : s === 'idle' ? 'Tap SNAP to turn on the camera.'
+        : Cam.supported() ? 'Camera is off. SNAP opens your camera app.' : "Camera preview isn't available here. SNAP opens your camera app.";
+    $('cam-allow').hidden = !(s === 'blocked' && Cam.supported());
   }
 
   async function onSnap() {
@@ -298,6 +355,7 @@
     } else if (st === 'idle') {
       await Cam.start();
       if (Cam.state() === 'on') return;
+      toast('Camera not allowed. Tap SNAP to use your camera app, or choose Allow camera access.', 5000);
     }
     $('file-camera').click();
   }
@@ -584,15 +642,6 @@
     const tb = $('home-totals');
     fillTotals(tb, sumsOf(rows), (n) => numFmt.format(n));
     if (!rows.length) tb.appendChild(el('p', { class: 'none', text: 'Nothing yet today.' }));
-    $('home-rows-lbl').hidden = !rows.length;
-    const box = $('home-rows');
-    box.textContent = '';
-    rows.slice(0, 5).forEach((r) => {
-      box.appendChild(el('div', { class: 'sheet-row two' }, [
-        el('span', { text: (r.shop || 'Unnamed shop') + ' \u00b7 ' + (isInc(r) ? 'Income' : (r.category || FALLBACK_CATEGORY)) + (payTag(r) ? ' \u00b7 ' + payTag(r) : '') }),
-        el('span', { class: 'amt' + (isInc(r) ? ' in' : ''), text: typeof r.amount === 'number' ? (isInc(r) ? '+' : '') + numFmt.format(r.amount) + ' ' + (r.currency || '') : '\u2014' })
-      ]));
-    });
   }
 
   function applyTheme(t) {
@@ -730,7 +779,7 @@
     state.summary = buildSummary(kind);
     $('sum-h').textContent = state.summary.title;
     $('sum-text').textContent = state.summary.text;
-    show('summary', 'home');
+    show('summary', 'expenses');
   }
 
   function setPostmark() {
@@ -993,6 +1042,7 @@
     const empty = state.all.length === 0;
     $('empty').hidden = !empty;
     $('summary').hidden = empty;
+    $('sum-grid').hidden = empty;
     $('month-wrap').hidden = empty;
 
     const rows = filtered();
@@ -1258,6 +1308,20 @@
     window.addEventListener('resize', () => { if (state.mode === 'review') { autogrow(); fitAmount(); fitSeal(); } });
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (state.mode === 'review') refreshReview(); });
     window.addEventListener('camstate', updateCaption);
+    ['pointerdown', 'touchstart', 'touchend', 'click', 'keydown'].forEach((ev) => document.addEventListener(ev, Sfx.unlock, { capture: true, passive: true }));
+    $('cam-allow').addEventListener('click', async () => {
+      await Cam.retry();
+      if (Cam.state() !== 'on') toast(camHelp(), 6000);
+    });
+    let motionAsked = false;
+    document.addEventListener('click', () => {
+      if (motionAsked || document.body.dataset.screen !== 'home' || !Float.needsPermission()) return;
+      motionAsked = true;
+      Float.ask().then((r) => {
+        if (r === 'granted') toast('Motion on. Tilt or shake your phone.');
+        else toast('Motion is off. Allow it in Settings so the buttons float with your phone.', 5000);
+      });
+    }, true);
     document.addEventListener('visibilitychange', () => { setPostmark(); syncCam(); });
 
     $('btn-home-scan').addEventListener('click', () => { resetScan(); show('scan'); });
@@ -1295,7 +1359,10 @@
     });
     $('btn-sum-week').addEventListener('click', () => openSummary('week'));
     $('btn-sum-month').addEventListener('click', () => openSummary('month'));
-    $('btn-sum-back').addEventListener('click', () => show('home'));
+    $('btn-sum-back').addEventListener('click', () => show('expenses'));
+    const openSheet = () => show('expenses');
+    $('home-card').addEventListener('click', openSheet);
+    $('home-card').addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openSheet(); } });
     $('btn-sum-copy').addEventListener('click', async () => {
       if (!state.summary) return;
       toast((await copyText(state.summary.text)) ? 'Summary copied to clipboard' : 'Could not copy. Select the text and copy it.');

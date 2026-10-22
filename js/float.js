@@ -55,15 +55,15 @@ const Float = (() => {
   }
 
   async function ask() {
+    const needs = typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function';
     try {
-      if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-        if ((await DeviceOrientationEvent.requestPermission()) !== 'granted') return;
+      if (needs) {
+        const r = await DeviceOrientationEvent.requestPermission();
+        if (r !== 'granted') return 'denied';
       }
-      if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-        await DeviceMotionEvent.requestPermission();
-      }
-    } catch (e) { }
+    } catch (e) { return 'denied'; }
     listen();
+    return needs ? 'granted' : 'listening';
   }
 
   function frame(t) {
@@ -203,7 +203,6 @@ const Float = (() => {
     if (!started) {
       started = true;
       listen();
-      document.addEventListener('click', ask, { once: true });
       requestAnimationFrame(frame);
     }
     return b;
@@ -214,5 +213,5 @@ const Float = (() => {
     bodies.forEach((b) => { if (b.init) { b.x = clamp(b.x, bd.x0, bd.x1); b.y = clamp(b.y, bd.y0, bd.y1); } });
   });
 
-  return { add, kick, setActive: (fn) => { active = fn; }, sensor: () => haveSensor };
+  return { add, kick, ask, needsPermission: () => typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function', setActive: (fn) => { active = fn; }, sensor: () => haveSensor };
 })();

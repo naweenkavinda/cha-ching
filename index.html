@@ -82,17 +82,11 @@
   </section>
 
   <section id="view-home" class="view" aria-labelledby="home-h" hidden>
-    <p id="home-date" class="lbl"></p>
+    <p id="home-date" class="lbl lbl-g"></p>
     <h1 id="home-h" class="big home-h">Hello</h1>
-    <div class="stamp paper summary">
+    <div id="home-card" class="stamp paper home-card" role="button" tabindex="0" aria-label="Open the sheet">
       <p id="home-count" class="lbl">TODAY</p>
       <div id="home-totals" class="totals"></div>
-    </div>
-    <div id="home-rows-lbl" class="lbl lbl-g sheet-lbl">TODAY'S ENTRIES</div>
-    <div id="home-rows" class="sheet"></div>
-    <div class="sum-grid">
-      <button type="button" id="btn-sum-week" class="btn">This week's bill summary</button>
-      <button type="button" id="btn-sum-month" class="btn">This month's full bill summary</button>
     </div>
     <div class="home-actions">
       <button type="button" id="btn-home-scan" class="btn btn-primary">Scan a receipt</button>
@@ -118,7 +112,7 @@
   <section id="view-summary" class="view" aria-labelledby="sum-h" hidden>
     <div class="view-head">
       <h1 id="sum-h">Bill summary</h1>
-      <button type="button" id="btn-sum-back" class="btn-link">Back to home</button>
+      <button type="button" id="btn-sum-back" class="btn-link">Back</button>
     </div>
     <div class="stamp paper sum-card"><pre id="sum-text" class="sum-pre"></pre></div>
     <div class="sum-actions">
@@ -150,6 +144,7 @@
         </div>
       </div>
       <p id="cam-caption" class="caption" aria-live="polite">Keep the receipt inside the stamp.</p>
+      <button type="button" id="cam-allow" class="btn-link cam-allow" hidden>Allow camera access</button>
       <div class="controls">
         <div class="c-left">
           <input id="file-upload" class="sr-only" type="file" accept="image/*">
@@ -250,6 +245,10 @@
     <div id="summary" class="stamp paper summary" hidden>
       <p id="summary-count" class="lbl"></p>
       <div id="totals" class="totals"></div>
+    </div>
+    <div id="sum-grid" class="sum-grid" hidden>
+      <button type="button" id="btn-sum-week" class="btn">This week's bill summary</button>
+      <button type="button" id="btn-sum-month" class="btn">This month's full bill summary</button>
     </div>
     <ul id="list" class="list"></ul>
     <div id="empty" class="empty" hidden>
