@@ -159,7 +159,7 @@
     navigator.storage.persist().catch(() => {});
   }
 
-  const VIEWS = ['welcome', 'home', 'scan', 'expenses', 'settings'];
+  const VIEWS = ['welcome', 'home', 'summary', 'scan', 'expenses', 'settings'];
   const ROLL_SEL = '.stamp, .notice, .caption, .controls, .actions, .sheet-row, .view-head, .sec, .progress, .home-h, #home-date, .theme-row, .home-actions, .list > li, .empty';
   const SYMBOLS = { LKR: 'Rs', USD: '$', EUR: '€', GBP: '£', INR: '₹', AUD: 'A$', SGD: 'S$', AED: 'AED' };
   const ymdDate = (s) => { const p = s.split('-').map(Number); return new Date(p[0], p[1] - 1, p[2]); };
@@ -427,8 +427,7 @@
   function applyTheme(t) {
     const light = t === 'light';
     if (light) document.documentElement.dataset.theme = 'light'; else document.documentElement.removeAttribute('data-theme');
-    $('th-dark').setAttribute('aria-pressed', String(!light));
-    $('th-light').setAttribute('aria-pressed', String(light));
+    $('tg-theme').setAttribute('aria-checked', String(light));
     const m = document.querySelector('meta[name="theme-color"]');
     if (m) m.setAttribute('content', getComputedStyle(document.documentElement).getPropertyValue('--ground').trim() || '#0B0B0C');
   }
@@ -438,6 +437,111 @@
     $('wel-form-wrap').hidden = false;
     $('wel-done').hidden = true;
     show('welcome');
+  }
+
+  const ymd = (d) => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  const dShort = (d) => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+
+  function buildSummary(kind) {
+    const now = new Date();
+    let start, end, title;
+    if (kind === 'week') {
+      const off = (now.getDay() + 6) % 7;
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - off);
+      end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6);
+      title = "This week's bill summary";
+    } else {
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+      end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      title = "This month's full bill summary";
+    }
+    const a = ymd(start), b = ymd(end);
+    const rows = state.all.filter((r) => r.date >= a && r.date <= b && typeof r.amount === 'number')
+      .sort((x, y) => String(x.date).localeCompare(String(y.date)) || (x.createdAt || 0) - (y.createdAt || 0));
+    const W = 42;
+    const rule = '-'.repeat(W);
+    const two = (l, r) => {
+      l = String(l); r = String(r);
+      const room = W - r.length - 1;
+      if (l.length > room) l = l.slice(0, Math.max(1, room - 1)) + '.';
+      return l + ' '.repeat(Math.max(1, W - l.length - r.length)) + r;
+    };
+    const money = (n, c) => numFmt.format(n) + ' ' + c;
+    const prof = settings.get('profile', null);
+    const lines = ['RECEIPT SNAP', title, dShort(start) + ' - ' + dShort(end) + ' ' + end.getFullYear()];
+    if (prof && prof.name) lines.push('Prepared for: ' + prof.name);
+    lines.push(rule);
+    if (!rows.length) {
+      lines.push('No entries in this period.');
+    } else {
+      const totals = {};
+      rows.forEach((r) => { totals[r.currency] = (totals[r.currency] || 0) + r.amount; });
+      lines.push('TOTAL SPENT');
+      Object.keys(totals).sort((x, y) => totals[y] - totals[x]).forEach((c) => lines.push(two(c, numFmt.format(totals[c]))));
+      lines.push(two('Entries', rows.length));
+      lines.push(rule, 'BY CATEGORY');
+      const cats = {};
+      rows.forEach((r) => { const k = (r.category || FALLBACK_CATEGORY) + '|' + r.currency; cats[k] = (cats[k] || 0) + r.amount; });
+      Object.keys(cats).sort((x, y) => cats[y] - cats[x]).forEach((k) => { const p = k.split('|'); lines.push(two(p[0], money(cats[k], p[1]))); });
+      lines.push(rule, 'ENTRIES');
+      rows.forEach((r) => lines.push(two(fmtShort(r.date) + '  ' + (r.shop || 'Unnamed shop'), money(r.amount, r.currency))));
+    }
+    lines.push(rule, 'Generated ' + new Date().toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' }));
+    const name = 'receipt-snap-' + (kind === 'week' ? 'week-' + a : 'month-' + a.slice(0, 7)) + '.pdf';
+    return { title, lines, text: lines.join('\n'), name };
+  }
+
+  function makePdf(lines) {
+    const esc = (s) => String(s).replace(/[^\x20-\x7E]/g, '?').replace(/([\\()])/g, '\\$1');
+    const per = 52;
+    const pages = [];
+    for (let i = 0; i < lines.length; i += per) pages.push(lines.slice(i, i + per));
+    if (!pages.length) pages.push(['']);
+    const objs = [];
+    objs[1] = '<< /Type /Catalog /Pages 2 0 R >>';
+    objs[2] = '<< /Type /Pages /Kids [' + pages.map((_, i) => (4 + i * 2) + ' 0 R').join(' ') + '] /Count ' + pages.length + ' >>';
+    objs[3] = '<< /Type /Font /Subtype /Type1 /BaseFont /Courier /Encoding /WinAnsiEncoding >>';
+    pages.forEach((p, i) => {
+      const pn = 4 + i * 2, cn = pn + 1;
+      let s = 'BT /F1 11 Tf 14 TL 50 790 Td\n';
+      p.forEach((l) => { s += '(' + esc(l) + ') Tj T*\n'; });
+      s += 'ET';
+      objs[pn] = '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents ' + cn + ' 0 R >>';
+      objs[cn] = '<< /Length ' + s.length + ' >>\nstream\n' + s + '\nendstream';
+    });
+    let out = '%PDF-1.4\n';
+    const off = [];
+    for (let n = 1; n < objs.length; n++) { off[n] = out.length; out += n + ' 0 obj\n' + objs[n] + '\nendobj\n'; }
+    const xref = out.length;
+    out += 'xref\n0 ' + objs.length + '\n0000000000 65535 f \n';
+    for (let n = 1; n < objs.length; n++) out += String(off[n]).padStart(10, '0') + ' 00000 n \n';
+    out += 'trailer\n<< /Size ' + objs.length + ' /Root 1 0 R >>\nstartxref\n' + xref + '\n%%EOF';
+    const bytes = new Uint8Array(out.length);
+    for (let i = 0; i < out.length; i++) bytes[i] = out.charCodeAt(i) & 255;
+    return bytes;
+  }
+
+  async function copyText(text) {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { await navigator.clipboard.writeText(text); return true; }
+    } catch (e) { }
+    const ta = el('textarea', { 'aria-hidden': 'true' });
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;font-size:16px';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { }
+    ta.remove();
+    return ok;
+  }
+
+  function openSummary(kind) {
+    state.summary = buildSummary(kind);
+    $('sum-h').textContent = state.summary.title;
+    $('sum-text').textContent = state.summary.text;
+    show('summary', 'home');
   }
 
   function setPostmark() {
@@ -900,11 +1004,9 @@
     });
     const applySound = () => {
       const on = settings.get('sound', true);
-      $('snd-on').setAttribute('aria-pressed', String(on));
-      $('snd-off').setAttribute('aria-pressed', String(!on));
+      $('tg-sound').setAttribute('aria-checked', String(on));
     };
-    $('snd-on').addEventListener('click', () => { settings.set('sound', true); applySound(); });
-    $('snd-off').addEventListener('click', () => { settings.set('sound', false); applySound(); });
+    $('tg-sound').addEventListener('click', () => { settings.set('sound', !settings.get('sound', true)); applySound(); });
     applySound();
 
     $('btn-snap').addEventListener('click', onSnap);
@@ -934,8 +1036,7 @@
     const msg = 'Hi! I use Receipt Snap to keep track of my expenses. Snap a receipt and the sheet fills itself in. It is free and works on your phone: ' + APP_URL;
     $('btn-invite').href = 'https://wa.me/?text=' + encodeURIComponent(msg);
     $('btn-home-scan').addEventListener('click', () => { resetScan(); show('scan'); });
-    $('th-dark').addEventListener('click', () => { settings.set('theme', 'dark'); applyTheme('dark'); });
-    $('th-light').addEventListener('click', () => { settings.set('theme', 'light'); applyTheme('light'); });
+    $('tg-theme').addEventListener('click', () => { const next = settings.get('theme', 'dark') === 'light' ? 'dark' : 'light'; settings.set('theme', next); applyTheme(next); });
     applyTheme(settings.get('theme', 'dark'));
     $('welcome-form').addEventListener('submit', (e) => {
       e.preventDefault();
@@ -955,6 +1056,18 @@
       settings.set('profile', null);
       $('welcome-form').reset();
       startView();
+    });
+    $('btn-sum-week').addEventListener('click', () => openSummary('week'));
+    $('btn-sum-month').addEventListener('click', () => openSummary('month'));
+    $('btn-sum-back').addEventListener('click', () => show('home'));
+    $('btn-sum-copy').addEventListener('click', async () => {
+      if (!state.summary) return;
+      toast((await copyText(state.summary.text)) ? 'Summary copied to clipboard' : 'Could not copy. Select the text and copy it.');
+    });
+    $('btn-sum-pdf').addEventListener('click', () => {
+      if (!state.summary) return;
+      saveFile(makePdf(state.summary.lines), state.summary.name, 'application/pdf');
+      toast('PDF ready');
     });
     setPostmark();
     updateCaption();

@@ -26,6 +26,8 @@
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-receipt" viewBox="0 0 24 24"><path d="M5 3h14v18l-2.3-1.5L14.3 21 12 19.5 9.7 21l-2.4-1.5L5 21z"/><path d="M9 8h6M9 12h6M9 16h3"/></symbol>
   <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11l8-7 8 7M6 10v10h12V10M10 20v-5h4v5"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"/></symbol>
+  <symbol id="i-sound" viewBox="0 0 24 24"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5zM15.5 9a4 4 0 0 1 0 6M18 6.5a8 8 0 0 1 0 11"/></symbol>
   <symbol id="i-camera" viewBox="0 0 24 24"><path d="M3 8.5A2.5 2.5 0 0 1 5.5 6h1.8l1.6-2h6.2l1.6 2h1.8A2.5 2.5 0 0 1 21 8.5v9a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/><circle cx="12" cy="13" r="3.5"/></symbol>
   <symbol id="i-scan" viewBox="0 0 24 24"><path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16M8 12h8"/></symbol>
   <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/></symbol>
@@ -42,6 +44,10 @@
   <div class="topbar-in">
     <div class="brand">Receipt Snap</div>
     <div class="top-right">
+      <div id="top-toggles" class="toggles">
+        <span class="tg"><svg class="ic" aria-hidden="true"><use href="#i-sun"/></svg><button type="button" id="tg-theme" class="ios-switch" role="switch" aria-checked="false" aria-label="Light theme"></button></span>
+        <span class="tg"><svg class="ic" aria-hidden="true"><use href="#i-sound"/></svg><button type="button" id="tg-sound" class="ios-switch" role="switch" aria-checked="true" aria-label="Sound"></button></span>
+      </div>
       <div id="postmark" class="postmark" role="img" aria-label="Today"><span id="pm-mon">OCT</span><span id="pm-day">22</span></div>
       <span id="top-label" class="top-label" hidden></span>
     </div>
@@ -83,23 +89,25 @@
     </div>
     <div id="home-rows-lbl" class="lbl lbl-g sheet-lbl">TODAY'S ENTRIES</div>
     <div id="home-rows" class="sheet"></div>
-    <div class="theme-row">
-      <span class="lbl lbl-g">THEME</span>
-      <div class="seg" role="group" aria-label="Theme">
-        <button type="button" id="th-dark" aria-pressed="true">Dark</button>
-        <button type="button" id="th-light" aria-pressed="false">Light</button>
-      </div>
-    </div>
-    <div class="theme-row">
-      <span class="lbl lbl-g">SOUND</span>
-      <div class="seg" role="group" aria-label="Sound">
-        <button type="button" id="snd-on" aria-pressed="true">On</button>
-        <button type="button" id="snd-off" aria-pressed="false">Off</button>
-      </div>
+    <div class="sum-grid">
+      <button type="button" id="btn-sum-week" class="btn">This week's bill summary</button>
+      <button type="button" id="btn-sum-month" class="btn">This month's full bill summary</button>
     </div>
     <div class="home-actions">
       <button type="button" id="btn-home-scan" class="btn btn-primary">Scan a receipt</button>
       <a id="btn-invite" class="btn" target="_blank" rel="noopener noreferrer" href="https://wa.me/">Invite a friend on WhatsApp</a>
+    </div>
+  </section>
+
+  <section id="view-summary" class="view" aria-labelledby="sum-h" hidden>
+    <div class="view-head">
+      <h1 id="sum-h">Bill summary</h1>
+      <button type="button" id="btn-sum-back" class="btn-link">Back to home</button>
+    </div>
+    <div class="stamp paper sum-card"><pre id="sum-text" class="sum-pre"></pre></div>
+    <div class="sum-actions">
+      <button type="button" id="btn-sum-copy" class="btn">Copy to clipboard</button>
+      <button type="button" id="btn-sum-pdf" class="btn btn-primary">Download PDF</button>
     </div>
   </section>
 

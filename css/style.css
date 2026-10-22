@@ -248,6 +248,33 @@ body.cam-on .ph { display: none; }
 body[data-screen="welcome"] .tabbar { display: none; }
 body[data-screen="welcome"] main { padding-bottom: var(--pad-bottom); }
 .tab { font-size: 10px; letter-spacing: .08em; }
+.toggles { display: none; align-items: center; gap: 10px; }
+body[data-screen="home"] .toggles { display: flex; }
+body[data-screen="home"] .brand { font-size: 24px; }
+.tg { display: flex; align-items: center; gap: 5px; color: var(--paper-soft); }
+.tg .ic { width: 16px; height: 16px; }
+.ios-switch {
+  position: relative; flex: none; width: 44px; height: 27px; padding: 0; border: 0; border-radius: 14px;
+  background: rgba(120, 120, 128, .42); cursor: pointer; touch-action: manipulation; transition: background-color .28s ease;
+}
+.ios-switch::before { content: ""; position: absolute; inset: -9px -4px; }
+.ios-switch::after {
+  content: ""; position: absolute; top: 2px; left: 2px; width: 23px; height: 23px; border-radius: 50%; background: #fff;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, .25), 0 1px 1px rgba(0, 0, 0, .16);
+  transition: transform .32s cubic-bezier(.3, 1.35, .5, 1), width .2s ease;
+}
+.ios-switch[aria-checked="true"] { background: var(--orange); }
+.ios-switch[aria-checked="true"]::after { transform: translateX(17px); }
+.ios-switch:active::after { width: 29px; }
+.ios-switch[aria-checked="true"]:active::after { transform: translateX(11px); }
+.view-head .btn-link { white-space: nowrap; padding: 8px 0; flex: none; }
+#sum-h { font-size: 21px; }
+.sum-grid { margin-top: 18px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.sum-grid .btn { min-height: 58px; font-size: 14px; }
+.sum-card { padding: 20px 16px; margin-bottom: 14px; }
+.sum-pre { margin: 0; white-space: pre; overflow-x: auto; font: 500 11px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.sum-actions { margin-top: auto; padding-top: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.sum-actions .btn { min-height: 54px; }
 .sheet-row.two { grid-template-columns: minmax(0, 1fr) auto; }
 .none { font-weight: 600; }
 a.btn { text-decoration: none; }
