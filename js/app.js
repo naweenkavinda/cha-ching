@@ -498,7 +498,7 @@
     setMode('idle');
   }
 
-  const APP_URL = 'https://naweenkavinda.github.io/receipt-snap/';
+  const APP_URL = 'https://naweenkavinda.github.io/cha-ching/';
 
   function rainCoins(income) {
     if (typeof Coins === 'undefined') return;

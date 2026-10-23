@@ -2,7 +2,7 @@
 
 Photograph or upload a receipt and the expense sheet fills itself in: date, shop, amount and category.
 
-▶ **[Open it live](https://naweenkavinda.github.io/receipt-snap/)**. Works on phones, tablets and computers. Install it with **Add to Home Screen** to use it like an app.
+▶ **[Open it live](https://naweenkavinda.github.io/cha-ching/)**. Works on phones, tablets and computers. Install it with **Add to Home Screen** to use it like an app.
 
 ## What it does
 
