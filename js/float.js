@@ -42,8 +42,8 @@ const Float = (() => {
   function kick(power) {
     bodies.forEach((b) => {
       const ang = Math.random() * Math.PI * 2;
-      b.vx += Math.cos(ang) * 950 * power;
-      b.vy += Math.sin(ang) * 950 * power;
+      b.vx += Math.cos(ang) * 280 * power;
+      b.vy += Math.sin(ang) * 280 * power;
     });
   }
 
@@ -76,8 +76,8 @@ const Float = (() => {
       const k = Math.min(1, dt / 4);
       base.b += (tilt.b - base.b) * k;
       base.g += (tilt.g - base.g) * k;
-      gx = clamp((tilt.g - base.g) / 22, -1, 1);
-      gy = clamp((tilt.b - base.b) / 22, -1, 1);
+      gx = clamp((tilt.g - base.g) / 32, -1, 1);
+      gy = clamp((tilt.b - base.b) / 32, -1, 1);
     }
 
     const bd = bounds();
@@ -98,9 +98,9 @@ const Float = (() => {
       if (dist < 28) pickTarget(b);
       const wx = Math.cos(t / 1300 + b.phase) * 16, wy = Math.sin(t / 900 + b.phase) * 18;
       if (haveSensor) {
-        b.vx += (gx * 1500 + (dx / dist) * 26 + wx) * dt;
-        b.vy += (gy * 1500 + (dy / dist) * 26 + wy) * dt;
-        const damp = Math.exp(-0.8 * dt);
+        b.vx += (gx * 520 + (dx / dist) * 22 + wx) * dt;
+        b.vy += (gy * 520 + (dy / dist) * 22 + wy) * dt;
+        const damp = Math.exp(-2.2 * dt);
         b.vx *= damp;
         b.vy *= damp;
       } else {
@@ -112,13 +112,13 @@ const Float = (() => {
         b.vy *= damp;
       }
       const sp = Math.hypot(b.vx, b.vy);
-      if (sp > 1800) { b.vx *= 1800 / sp; b.vy *= 1800 / sp; }
+      if (sp > 460) { b.vx *= 460 / sp; b.vy *= 460 / sp; }
       b.x += b.vx * dt;
       b.y += b.vy * dt;
-      if (b.x < bd.x0) { b.x = bd.x0; b.vx = Math.abs(b.vx) * 0.6; pickTarget(b); }
-      if (b.x > bd.x1) { b.x = bd.x1; b.vx = -Math.abs(b.vx) * 0.6; pickTarget(b); }
-      if (b.y < bd.y0) { b.y = bd.y0; b.vy = Math.abs(b.vy) * 0.6; pickTarget(b); }
-      if (b.y > bd.y1) { b.y = bd.y1; b.vy = -Math.abs(b.vy) * 0.6; pickTarget(b); }
+      if (b.x < bd.x0) { b.x = bd.x0; b.vx = Math.abs(b.vx) * 0.45; pickTarget(b); }
+      if (b.x > bd.x1) { b.x = bd.x1; b.vx = -Math.abs(b.vx) * 0.45; pickTarget(b); }
+      if (b.y < bd.y0) { b.y = bd.y0; b.vy = Math.abs(b.vy) * 0.45; pickTarget(b); }
+      if (b.y > bd.y1) { b.y = bd.y1; b.vy = -Math.abs(b.vy) * 0.45; pickTarget(b); }
     });
 
     for (let i = 0; i < bodies.length; i++) {
@@ -183,8 +183,8 @@ const Float = (() => {
         const f = hist[0], l = hist[hist.length - 1];
         if (f && l && l[0] - f[0] > 10 && performance.now() - l[0] < 120) {
           const dt = (l[0] - f[0]) / 1000;
-          b.vx = clamp((l[1] - f[1]) / dt, -1500, 1500);
-          b.vy = clamp((l[2] - f[2]) / dt, -1500, 1500);
+          b.vx = clamp((l[1] - f[1]) / dt, -700, 700);
+          b.vy = clamp((l[2] - f[2]) / dt, -700, 700);
         }
         b.justDragged = true;
         setTimeout(() => { b.justDragged = false; }, 60);
