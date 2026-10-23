@@ -30,7 +30,7 @@
   };
 
   const Sfx = (() => {
-    let ctx = null, master = null, keep = null, done = false;
+    let ctx = null, master = null, done = false;
     const NOTES = {
       tap: [[880, 0, .18, .3], [1318, .04, .22, .18]],
       tab: [[784, 0, .16, .28], [1175, .05, .2, .16]],
@@ -41,16 +41,6 @@
       warn: [[392, 0, .22, .3], [330, .16, .26, .3], [262, .34, .4, .3]],
       ok: [[523, 0, .24, .3], [659, .09, .24, .27], [784, .18, .26, .27], [1046, .27, .46, .27]]
     };
-    const iosLike = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    function silentWav() {
-      const n = 8000, b = new Uint8Array(44 + n), dv = new DataView(b.buffer);
-      const w = (o, t) => { for (let i = 0; i < t.length; i++) b[o + i] = t.charCodeAt(i); };
-      w(0, 'RIFF'); dv.setUint32(4, 36 + n, true); w(8, 'WAVE'); w(12, 'fmt '); dv.setUint32(16, 16, true);
-      dv.setUint16(20, 1, true); dv.setUint16(22, 1, true); dv.setUint32(24, 8000, true); dv.setUint32(28, 8000, true);
-      dv.setUint16(32, 1, true); dv.setUint16(34, 8, true); w(36, 'data'); dv.setUint32(40, n, true);
-      for (let i = 0; i < n; i++) b[44 + i] = 128;
-      return URL.createObjectURL(new Blob([b], { type: 'audio/wav' }));
-    }
     function setup() {
       if (ctx) return true;
       const AC = window.AudioContext || window.webkitAudioContext;
@@ -67,7 +57,7 @@
     }
     function unlock() {
       if (done || !setup()) return;
-      try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) { }
+      try { if (navigator.audioSession) navigator.audioSession.type = 'ambient'; } catch (e) { }
       try {
         const p = ctx.resume();
         if (p && p.then) p.then(() => { if (ctx.state === 'running') done = true; }).catch(() => { });
@@ -78,14 +68,6 @@
         src.connect(ctx.destination);
         src.start(0);
       } catch (e) { }
-      if (iosLike() && !navigator.audioSession && !keep) {
-        try {
-          keep = new Audio(silentWav());
-          keep.loop = true;
-          keep.setAttribute('playsinline', '');
-          keep.play().catch(() => { keep = null; });
-        } catch (e) { keep = null; }
-      }
     }
     function noiseHit(t, dur, type, freq, q, gain, pow) {
       const n = Math.ceil(ctx.sampleRate * dur);
@@ -920,6 +902,12 @@
     show('summary', 'expenses');
   }
 
+  function recover() {
+    document.querySelectorAll('.leaf-wrap, canvas[aria-hidden="true"]').forEach((n) => n.remove());
+    if (!document.querySelector('.view:not([hidden])')) startView();
+    setScreen();
+  }
+
   function setPostmark() {
     const d = new Date();
     $('pm-mon').textContent = d.toLocaleDateString('en-GB', { month: 'short' }).toUpperCase();
@@ -1451,7 +1439,10 @@
       await Cam.retry();
       if (Cam.state() !== 'on') toast(camHelp(), 6000);
     });
-    document.addEventListener('visibilitychange', () => { setPostmark(); syncCam(); if (!document.hidden && document.body.dataset.screen === 'home') renderHome(); });
+    document.addEventListener('visibilitychange', () => { setPostmark(); syncCam(); if (!document.hidden) { recover(); if (document.body.dataset.screen === 'home') renderHome(); } });
+    window.addEventListener('pageshow', recover);
+    window.addEventListener('pagehide', () => Cam.stop());
+    setTimeout(recover, 2500);
     setInterval(() => { if (!document.hidden && document.body.dataset.screen === 'home') renderHome(); }, 60000);
 
     $('btn-home-scan').addEventListener('click', () => { resetScan(); show('scan'); });
