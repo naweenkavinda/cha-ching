@@ -1,7 +1,7 @@
 {
   "id": "./",
-  "name": "Receipt Snap",
-  "short_name": "Receipt Snap",
+  "name": "Cha-Ching",
+  "short_name": "Cha-Ching",
   "description": "Snap a receipt, read it on your device and keep a simple expense sheet.",
   "start_url": "./",
   "scope": "./",

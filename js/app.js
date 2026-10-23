@@ -364,7 +364,7 @@
   }
 
   function camHelp() {
-    if (isIOS) return 'Camera is blocked. Open Settings, find Safari (or Receipt Snap if installed), turn Camera on, then reload.';
+    if (isIOS) return 'Camera is blocked. Open Settings, find Safari (or Cha-Ching if installed), turn Camera on, then reload.';
     if (/Android/.test(navigator.userAgent)) return 'Camera is blocked. Tap the lock icon by the address, choose Permissions, and allow Camera.';
     return 'Camera is blocked. Allow it from the lock icon next to the address bar.';
   }
@@ -528,7 +528,7 @@
   }
 
   function inviteFriend() {
-    const msg = 'Hi! I use Receipt Snap to keep track of my expenses. Snap a receipt and the sheet fills itself in. It is free and works on your phone: ' + APP_URL;
+    const msg = 'Hi! I use Cha-Ching to keep track of my expenses. Snap a receipt and the sheet fills itself in. It is free and works on your phone: ' + APP_URL;
     window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank', 'noopener');
   }
 
@@ -822,7 +822,7 @@
     };
     const money = (n, c) => numFmt.format(n) + ' ' + c;
     const prof = settings.get('profile', null);
-    const lines = ['RECEIPT SNAP', title, dShort(start) + ' - ' + dShort(end) + ' ' + end.getFullYear()];
+    const lines = ['CHA-CHING', title, dShort(start) + ' - ' + dShort(end) + ' ' + end.getFullYear()];
     if (prof && prof.name) lines.push('Prepared for: ' + prof.name);
     lines.push(rule);
     if (!rows.length) {
@@ -859,7 +859,7 @@
       rows.forEach((r) => lines.push(two(fmtShort(r.date) + '  ' + (r.shop || 'Unnamed shop') + (payTag(r) ? ' (' + payTag(r) + ')' : ''), (isInc(r) ? '+' : '') + money(r.amount, r.currency))));
     }
     lines.push(rule, 'Generated ' + new Date().toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' }));
-    const name = 'receipt-snap-' + (kind === 'week' ? 'week-' + a : 'month-' + a.slice(0, 7)) + '.pdf';
+    const name = 'cha-ching-' + (kind === 'week' ? 'week-' + a : 'month-' + a.slice(0, 7)) + '.pdf';
     return { title, lines, text: lines.join('\n'), name };
   }
 
@@ -1252,7 +1252,7 @@
     if (!state.all.length) { toast('Nothing to back up yet.'); return; }
     const expenses = state.all.map((r) => { const c = Object.assign({}, r); delete c.id; return c; });
     const data = { app: 'receipt-snap', version: 1, exportedAt: new Date().toISOString(), expenses };
-    saveFile(JSON.stringify(data), 'receipt-snap-backup-' + today() + '.json', 'application/json');
+    saveFile(JSON.stringify(data), 'cha-ching-backup-' + today() + '.json', 'application/json');
   }
 
   function readText(file) {
@@ -1358,7 +1358,7 @@
     window.addEventListener('appinstalled', () => {
       state.installPrompt = null;
       renderInstall();
-      toast('Receipt Snap installed');
+      toast('Cha-Ching installed');
     });
     $('btn-install').addEventListener('click', async () => {
       const p = state.installPrompt;

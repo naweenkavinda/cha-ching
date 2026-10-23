@@ -9,7 +9,7 @@ $mime = @{
 $listener = [System.Net.HttpListener]::new()
 $listener.Prefixes.Add("http://localhost:$Port/")
 $listener.Start()
-Write-Host "Receipt Snap: http://localhost:$Port/"
+Write-Host "Cha-Ching: http://localhost:$Port/"
 while ($listener.IsListening) {
   $ctx = $listener.GetContext()
   $res = $ctx.Response

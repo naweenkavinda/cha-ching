@@ -1,4 +1,4 @@
-# Receipt Snap
+# Cha-Ching
 
 Photograph or upload a receipt and the expense sheet fills itself in: date, shop, amount and category.
 
