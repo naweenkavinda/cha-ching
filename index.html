@@ -96,15 +96,15 @@
     </div>
     <button type="button" id="btn-limit" class="btn limit-btn"></button>
     <div class="home-actions">
-      <button type="button" id="btn-home-scan" class="btn btn-primary tile"><svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg><span>Scan a receipt</span></button>
-      <button type="button" id="btn-add" class="btn tile"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg><span>Add a cost or income</span></button>
+      <button type="button" id="btn-home-scan" class="btn btn-primary tile"><svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg><span>Snap it!</span></button>
+      <button type="button" id="btn-add" class="btn tile"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg><span>Spill the beans</span></button>
     </div>
   </section>
 
   <div id="limit-dialog" class="dialog" role="dialog" aria-modal="true" aria-labelledby="ld-title" hidden>
     <div class="dialog-card stamp paper">
       <div class="q-emoji" aria-hidden="true">&#128721;</div>
-      <h2 id="ld-title" class="big q-title">That's it for today</h2>
+      <h2 id="ld-title" class="big q-title">Pocket Police, On Duty</h2>
       <p class="q-sub">Set a daily spending limit. If you go over, the card blinks red until you flip Cheat day.</p>
       <div class="q-amount ld-amount">
         <span class="q-cur"><span id="ld-sym">Rs</span><select id="ld-cur" aria-label="Currency"></select></span>
@@ -113,7 +113,7 @@
       <p id="ld-err" class="q-error" aria-live="polite"></p>
       <div class="ld-actions">
         <button type="button" id="ld-save" class="btn btn-primary">Set limit</button>
-        <button type="button" id="ld-cancel" class="btn">Cancel</button>
+        <button type="button" id="ld-cancel" class="btn">Forget it</button>
       </div>
       <button type="button" id="ld-remove" class="btn-link ld-remove" hidden>Remove my limit</button>
     </div>
@@ -123,7 +123,7 @@
     <div class="q-top">
       <button type="button" id="q-back" class="btn-link">Back</button>
       <span id="q-step" class="lbl"></span>
-      <button type="button" id="q-cancel" class="btn-link">Cancel</button>
+      <button type="button" id="q-cancel" class="btn-link">Forget it</button>
     </div>
     <div class="stamp paper q-card">
       <div id="q-emoji" class="q-emoji" aria-hidden="true">&#128527;</div>
@@ -131,7 +131,7 @@
       <p id="q-sub" class="q-sub"></p>
       <div id="q-body" class="q-body"></div>
     </div>
-    <div class="q-actions"><button type="button" id="q-next" class="btn btn-primary">Next</button></div>
+    <div class="q-actions"><button type="button" id="q-next" class="btn btn-primary">And then?</button></div>
   </section>
 
   <section id="view-summary" class="view" aria-labelledby="sum-h" hidden>
@@ -141,13 +141,13 @@
     </div>
     <div class="stamp paper sum-card"><pre id="sum-text" class="sum-pre"></pre></div>
     <div class="sum-actions">
-      <button type="button" id="btn-sum-copy" class="btn">Copy to clipboard</button>
-      <button type="button" id="btn-sum-pdf" class="btn btn-primary">Download PDF</button>
+      <button type="button" id="btn-sum-copy" class="btn">Grab the text</button>
+      <button type="button" id="btn-sum-pdf" class="btn btn-primary">Get the paperwork (PDF)</button>
     </div>
   </section>
 
   <section id="view-scan" class="view" aria-labelledby="scan-h" hidden>
-    <h1 id="scan-h" class="sr-only">Scan a receipt</h1>
+    <h1 id="scan-h" class="sr-only">Snap it!</h1>
 
     <div id="capture" class="screen">
       <div class="stamp viewfinder">
@@ -169,17 +169,17 @@
         </div>
       </div>
       <p id="cam-caption" class="caption" aria-live="polite">Keep the receipt inside the stamp.</p>
-      <button type="button" id="cam-allow" class="btn-link cam-allow" hidden>Allow camera access</button>
+      <button type="button" id="cam-allow" class="btn-link cam-allow" hidden>Let me see</button>
       <div class="controls">
         <div class="c-left">
           <input id="file-upload" class="sr-only" type="file" accept="image/*">
-          <label for="file-upload" class="btn btn-sm">Upload</label>
+          <label for="file-upload" class="btn btn-sm">Got a pic?</label>
         </div>
         <button type="button" id="btn-snap" class="shutter" aria-label="Take photo"><span>SNAP</span></button>
-        <div class="c-right"><button type="button" id="btn-sheet" class="btn btn-sm">Sheet</button></div>
+        <div class="c-right"><button type="button" id="btn-sheet" class="btn btn-sm">Damages!</button></div>
       </div>
       <input id="file-camera" class="sr-only" type="file" accept="image/*" capture="environment" tabindex="-1">
-      <button type="button" id="btn-manual" class="btn-link">Add without photo</button>
+      <button type="button" id="btn-manual" class="btn-link">No receipt? No problem</button>
     </div>
 
     <div id="work" class="screen" hidden>
@@ -227,8 +227,8 @@
           <div class="pay-row">
             <span class="lbl lbl-g">TYPE</span>
             <div class="seg" role="group" aria-label="Type">
-              <button type="button" id="k-exp" aria-pressed="true">Expense</button>
-              <button type="button" id="k-inc" aria-pressed="false">Income</button>
+              <button type="button" id="k-exp" aria-pressed="true">Money out</button>
+              <button type="button" id="k-inc" aria-pressed="false">Money in</button>
             </div>
           </div>
           <div id="pay-wrap">
@@ -252,11 +252,11 @@
         <div class="lbl lbl-g sheet-lbl">SHEET, LATEST ROWS</div>
         <div id="sheet-rows" class="sheet"></div>
 
-        <button type="button" id="btn-delete" class="btn-link link-danger" hidden>Delete this entry</button>
+        <button type="button" id="btn-delete" class="btn-link link-danger" hidden>Make it disappear</button>
 
         <div class="actions">
-          <button type="button" id="btn-discard" class="btn">Retake</button>
-          <button type="submit" id="btn-save" class="btn btn-primary">Add to sheet</button>
+          <button type="button" id="btn-discard" class="btn">Nope, again</button>
+          <button type="submit" id="btn-save" class="btn btn-primary">Lock it in</button>
         </div>
       </form>
     </div>
@@ -272,14 +272,14 @@
       <div id="totals" class="totals"></div>
     </div>
     <div id="sum-grid" class="sum-grid" hidden>
-      <button type="button" id="btn-sum-week" class="btn">This week's bill summary</button>
-      <button type="button" id="btn-sum-month" class="btn">This month's full bill summary</button>
+      <button type="button" id="btn-sum-week" class="btn">How was my week?</button>
+      <button type="button" id="btn-sum-month" class="btn">Judge my month</button>
     </div>
     <ul id="list" class="list"></ul>
     <div id="empty" class="empty" hidden>
       <h2>No entries yet</h2>
       <p>Scan your first receipt and it will be added to the sheet.</p>
-      <button type="button" id="btn-first" class="btn btn-primary">Scan a receipt</button>
+      <button type="button" id="btn-first" class="btn btn-primary">Snap it!</button>
     </div>
   </section>
 
@@ -293,7 +293,7 @@
       <h2>Export</h2>
       <label class="lbl lbl-g" for="export-scope">EXPENSES TO INCLUDE</label>
       <select id="export-scope" class="sel"><option value="filter">Current month filter</option><option value="all">All expenses</option></select>
-      <button type="button" id="btn-csv" class="btn">Export CSV</button>
+      <button type="button" id="btn-csv" class="btn">Spreadsheet-ify</button>
       <p class="note">Opens in Excel, Numbers or Google Sheets.</p>
     </div>
     <div class="sec">
@@ -329,7 +329,7 @@
   <div class="tabbar-in">
     <button type="button" class="tab" data-view="home"><svg class="ic" aria-hidden="true"><use href="#i-home"/></svg><span>Home</span></button>
     <button type="button" class="tab" data-view="scan"><svg class="ic" aria-hidden="true"><use href="#i-scan"/></svg><span>Scan</span></button>
-    <button type="button" class="tab" data-view="expenses"><svg class="ic" aria-hidden="true"><use href="#i-list"/></svg><span>Sheet</span></button>
+    <button type="button" class="tab" data-view="expenses"><svg class="ic" aria-hidden="true"><use href="#i-list"/></svg><span>Damages!</span></button>
   </div>
 </nav>
 

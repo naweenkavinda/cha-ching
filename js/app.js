@@ -356,7 +356,7 @@
     } else if (st === 'idle') {
       await Cam.start();
       if (Cam.state() === 'on') return;
-      toast('Camera not allowed. Tap SNAP to use your camera app, or choose Allow camera access.', 5000);
+      toast('Camera not allowed. Tap SNAP to use your camera app, or choose Let me see.', 5000);
     }
     $('file-camera').click();
   }
@@ -523,7 +523,7 @@
     body.textContent = '';
     const next = $('q-next');
     next.hidden = false;
-    next.textContent = Q.step === 'cardname' ? 'Done' : 'Next';
+    next.textContent = Q.step === 'cardname' ? 'Case closed' : 'And then?';
     const err = el('p', { class: 'q-error', id: 'q-err', 'aria-live': 'polite' });
     let focusEl = null;
     if (Q.step === 'what') {
@@ -542,14 +542,14 @@
     } else if (Q.step === 'kind') {
       next.hidden = true;
       body.appendChild(el('div', { class: 'q-choices' }, [
-        choice('\uD83D\uDCB8', 'Expense', () => { Q.kind = 'expense'; questAdvance(); }),
-        choice('\uD83E\uDD11', 'Income', () => { Q.kind = 'income'; questAdvance(); })
+        choice('\uD83D\uDCB8', 'Money out', () => { Q.kind = 'expense'; questAdvance(); }),
+        choice('\uD83E\uDD11', 'Money in', () => { Q.kind = 'income'; questAdvance(); })
       ]));
     } else if (Q.step === 'card') {
       next.hidden = true;
       body.appendChild(el('div', { class: 'q-choices' }, [
-        choice('\uD83D\uDCB3', 'Yes, card', () => { Q.card = true; questAdvance(); }),
-        choice('\uD83D\uDCB5', 'No, cash', () => { Q.card = false; questAdvance(); })
+        choice('\uD83D\uDCB3', 'Swiped it', () => { Q.card = true; questAdvance(); }),
+        choice('\uD83D\uDCB5', 'Cold cash', () => { Q.card = false; questAdvance(); })
       ]));
     } else {
       focusEl = el('input', { id: 'q-in', class: 'q-in', type: 'text', maxlength: '40', placeholder: 'e.g. Visa 4521', autocapitalize: 'words', enterkeyhint: 'done', 'aria-label': 'Card name' });
@@ -629,7 +629,7 @@
     Sfx.play('ok');
     await loadAll();
     show('home');
-    toast((income ? 'Income added' : 'Cost added') + ' \u00b7 entry ' + state.all.length);
+    toast(income ? 'Money in. Nice one.' : 'Done. Your wallet has been informed.');
     limitAfterSave();
   }
 
@@ -658,7 +658,7 @@
     $('home-limit').hidden = !l;
     const btn = $('btn-limit');
     btn.textContent = '';
-    btn.appendChild(el('span', { text: "That's it for today" }));
+    btn.appendChild(el('span', { text: 'Pocket Police, On Duty' }));
     if (l) btn.appendChild(el('span', { class: 'limit-sub', text: 'Limit ' + numFmt.format(l.amount) + ' ' + l.currency }));
     if (!l) return;
     $('lim-fill').style.width = Math.min(100, (sp / l.amount) * 100) + '%';
@@ -700,7 +700,7 @@
   function limitAfterSave() {
     if (overLimit() && !isCheat()) {
       Sfx.play('warn');
-      setTimeout(() => toast("Over today's limit! Flip Cheat day to stop the alarm.", 5000), 1800);
+      setTimeout(() => toast('Whoa, easy there! Over your limit. Flip Cheat day to stop the alarm.', 5000), 1800);
     }
   }
 
@@ -1008,8 +1008,8 @@
       state.hintFlagged = !!document.querySelector('#form .fld.unread');
     }
     $('btn-delete').hidden = mode !== 'edit';
-    $('btn-discard').textContent = mode === 'edit' ? 'Cancel' : mode === 'manual' ? 'Back' : 'Retake';
-    $('btn-save').textContent = mode === 'edit' ? 'Save changes' : 'Add to sheet';
+    $('btn-discard').textContent = mode === 'edit' ? 'Cancel' : mode === 'manual' ? 'Back' : 'Nope, again';
+    $('btn-save').textContent = mode === 'edit' ? 'Done tweaking' : 'Lock it in';
     setMode('review');
     if (mode === 'manual') $('f-shop').focus();
   }
@@ -1052,7 +1052,7 @@
     if (state.filter !== 'all' && state.filter !== date.slice(0, 7)) { state.filter = date.slice(0, 7); settings.set('filter', state.filter); }
     resetScan();
     if (wasEditing) { show('expenses'); toast('Changes saved'); }
-    else { toast((formKind === 'income' ? 'Income added' : 'Added to sheet') + ' · entry ' + state.all.length); limitAfterSave(); }
+    else { toast(formKind === 'income' ? 'Money in. Nice one.' : 'Done. Your wallet has been informed.'); limitAfterSave(); }
   }
 
   function onDiscard() {
@@ -1424,7 +1424,7 @@
       const on = !isCheat();
       settings.set('cheatDay', on ? today() : '');
       renderHome();
-      toast(on ? 'Cheat day on. No alarms today.' : 'Cheat day off.');
+      toast(on ? 'Cheat day on. No judgement.' : 'Cheat day off.');
     });
     $('q-next').addEventListener('click', questAdvance);
     $('q-back').addEventListener('click', questBack);
