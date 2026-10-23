@@ -46,13 +46,15 @@
   <div class="topbar-in">
     <div class="brand">Receipt Snap</div>
     <div class="top-right">
-      <div id="top-toggles" class="toggles">
-        <span class="tg" id="tg-cheat-wrap" hidden><span class="tg-emoji" aria-hidden="true">&#127829;</span><button type="button" id="tg-cheat" class="ios-switch" role="switch" aria-checked="false" aria-label="Cheat day"></button></span>
-        <span class="tg"><svg class="ic" aria-hidden="true"><use href="#i-sun"/></svg><button type="button" id="tg-theme" class="ios-switch" role="switch" aria-checked="false" aria-label="Light theme"></button></span>
-        <span class="tg"><svg class="ic" aria-hidden="true"><use href="#i-sound"/></svg><button type="button" id="tg-sound" class="ios-switch" role="switch" aria-checked="true" aria-label="Sound"></button></span>
-      </div>
       <div id="postmark" class="postmark" role="img" aria-label="Today"><span id="pm-mon">OCT</span><span id="pm-day">22</span></div>
       <span id="top-label" class="top-label" hidden></span>
+      <div id="menu-wrap" class="menu-wrap">
+        <button type="button" id="menu-btn" class="dots" aria-label="More options" aria-haspopup="menu" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></button>
+        <ul id="menu" class="menu" role="menu" aria-label="More options">
+          <li role="none"><button type="button" role="menuitem" id="menu-settings"><svg class="ic" aria-hidden="true"><use href="#i-cog"/></svg><span>Settings</span></button></li>
+          <li role="none"><button type="button" role="menuitem" id="menu-invite"><span class="em" aria-hidden="true">&#128587;</span><span>Invite a friend</span></button></li>
+        </ul>
+      </div>
     </div>
   </div>
 </header>
@@ -84,7 +86,14 @@
   </section>
 
   <section id="view-home" class="view" aria-labelledby="home-h" hidden>
-    <p id="home-date" class="lbl lbl-g"></p>
+    <div class="home-row">
+      <p id="home-date" class="lbl lbl-g"></p>
+        <div id="top-toggles" class="toggles">
+          <span class="tg" id="tg-cheat-wrap" hidden><span class="tg-emoji" aria-hidden="true">&#127829;</span><button type="button" id="tg-cheat" class="ios-switch" role="switch" aria-checked="false" aria-label="Cheat day"></button></span>
+          <span class="tg"><svg class="ic" aria-hidden="true"><use href="#i-sun"/></svg><button type="button" id="tg-theme" class="ios-switch" role="switch" aria-checked="false" aria-label="Light theme"></button></span>
+          <span class="tg"><svg class="ic" aria-hidden="true"><use href="#i-sound"/></svg><button type="button" id="tg-sound" class="ios-switch" role="switch" aria-checked="true" aria-label="Sound"></button></span>
+        </div>
+    </div>
     <h1 id="home-h" class="big home-h">Hello</h1>
     <div id="home-card" class="stamp paper home-card" role="button" tabindex="0" aria-label="Open the sheet">
       <p id="home-count" class="lbl">TODAY</p>
@@ -333,8 +342,6 @@
   </div>
 </nav>
 
-<button type="button" id="fab-invite" class="fab fab-emoji" aria-label="Invite a friend on WhatsApp"><span aria-hidden="true">&#128587;</span></button>
-<button type="button" id="fab-settings" class="fab" aria-label="Open settings (drag to move)"><svg class="ic" aria-hidden="true"><use href="#i-cog"/></svg></button>
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 <div id="drop" class="drop-overlay" hidden><span>Drop the photo to scan it</span></div>
 <noscript><p class="noscript">Receipt Snap needs JavaScript to run.</p></noscript>
@@ -343,7 +350,7 @@
 <script src="js/db.js"></script>
 <script src="js/ocr.js"></script>
 <script src="js/camera.js"></script>
-<script src="js/float.js"></script>
+<script src="js/coins.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

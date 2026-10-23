@@ -36,6 +36,8 @@
       tab: [[784, 0, .16, .28], [1175, .05, .2, .16]],
       primary: [[659, 0, .22, .3], [880, .07, .24, .26], [1318, .14, .34, .24]],
       snap: [[1046, 0, .12, .3], [1568, .05, .2, .24]],
+      shutter: [],
+      coin: [[1568, 0, .1, .22], [2349, .025, .16, .14]],
       warn: [[392, 0, .22, .3], [330, .16, .26, .3], [262, .34, .4, .3]],
       ok: [[523, 0, .24, .3], [659, .09, .24, .27], [784, .18, .26, .27], [1046, .27, .46, .27]]
     };
@@ -85,8 +87,43 @@
         } catch (e) { keep = null; }
       }
     }
+    function click(t, dur, freq, gain) {
+      const n = Math.ceil(ctx.sampleRate * dur);
+      const buf = ctx.createBuffer(1, n, ctx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < n; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 3);
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.value = freq;
+      bp.Q.value = 1.1;
+      const g = ctx.createGain();
+      g.gain.value = gain;
+      src.connect(bp);
+      bp.connect(g);
+      g.connect(master);
+      src.start(t);
+    }
     function schedule(kind) {
       const t0 = ctx.currentTime + 0.02;
+      if (kind === 'shutter') {
+        click(t0, 0.04, 3400, 1.6);
+        click(t0 + 0.09, 0.07, 1500, 1.3);
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = 'sine';
+        o.frequency.setValueAtTime(220, t0 + 0.09);
+        o.frequency.exponentialRampToValueAtTime(90, t0 + 0.16);
+        g.gain.setValueAtTime(0.0001, t0 + 0.09);
+        g.gain.exponentialRampToValueAtTime(0.5, t0 + 0.1);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.18);
+        o.connect(g);
+        g.connect(master);
+        o.start(t0 + 0.09);
+        o.stop(t0 + 0.2);
+        return;
+      }
       NOTES[kind].forEach((n) => {
         const o = ctx.createOscillator();
         const g = ctx.createGain();
@@ -279,6 +316,7 @@
   }
 
   function show(view, tab) {
+    setMenu(false);
     const from = VIEWS.findIndex((v) => !$('view-' + v).hidden);
     const target = VIEWS.indexOf(view);
     if (from >= 0 && from !== target) turnPage(target > from);
@@ -476,6 +514,19 @@
 
   const APP_URL = 'https://naweenkavinda.github.io/receipt-snap/';
 
+  function rainCoins(income) {
+    if (typeof Coins === 'undefined') return;
+    Coins.rain({ count: income ? 24 : 16, onHit: () => Sfx.play('coin') });
+  }
+
+  function setMenu(open) {
+    const m = $('menu');
+    if (!m) return;
+    m.classList.toggle('open', open);
+    $('menu-btn').classList.toggle('open', open);
+    $('menu-btn').setAttribute('aria-expanded', String(open));
+  }
+
   function inviteFriend() {
     const msg = 'Hi! I use Receipt Snap to keep track of my expenses. Snap a receipt and the sheet fills itself in. It is free and works on your phone: ' + APP_URL;
     window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank', 'noopener');
@@ -629,6 +680,7 @@
     Sfx.play('ok');
     await loadAll();
     show('home');
+    setTimeout(() => rainCoins(income), 750);
     toast(income ? 'Money in. Nice one.' : 'Done. Your wallet has been informed.');
     limitAfterSave();
   }
@@ -717,7 +769,7 @@
     const now = new Date();
     const h = now.getHours();
     $('home-h').textContent = greeting(h) + (p && p.name ? ', ' + p.name : '');
-    $('home-date').textContent = now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }).toUpperCase();
+    $('home-date').textContent = now.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }).toUpperCase();
     const rows = state.all.filter((r) => r.date === today()).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
     $('home-count').textContent = rows.length ? 'TODAY \u00b7 ' + rows.length + (rows.length === 1 ? ' ENTRY' : ' ENTRIES') : 'TODAY';
     const tb = $('home-totals');
@@ -1052,7 +1104,7 @@
     if (state.filter !== 'all' && state.filter !== date.slice(0, 7)) { state.filter = date.slice(0, 7); settings.set('filter', state.filter); }
     resetScan();
     if (wasEditing) { show('expenses'); toast('Changes saved'); }
-    else { toast(formKind === 'income' ? 'Money in. Nice one.' : 'Done. Your wallet has been informed.'); limitAfterSave(); }
+    else { toast(formKind === 'income' ? 'Money in. Nice one.' : 'Done. Your wallet has been informed.'); limitAfterSave(); setTimeout(() => rainCoins(formKind === 'income'), 750); }
   }
 
   function onDiscard() {
@@ -1354,11 +1406,11 @@
     $('btn-clear').addEventListener('click', clearAll);
 
     document.addEventListener('click', (e) => {
-      const b = e.target.closest && e.target.closest('.btn, .btn-link, .tab, .item, .shutter, .fab');
+      const b = e.target.closest && e.target.closest('.btn, .btn-link, .tab, .item, .shutter, .dots, .menu button');
       if (!b) return;
       replay(b.classList.contains('tab') ? b.querySelector('.ic') : b, 'pop');
       if (b.id === 'btn-save') return;
-      Sfx.play(b.classList.contains('shutter') ? 'snap' : b.classList.contains('tab') ? 'tab' : b.classList.contains('btn-primary') ? 'primary' : 'tap');
+      Sfx.play((b.classList.contains('shutter') || b.id === 'btn-home-scan' || b.id === 'btn-first') ? 'shutter' : b.classList.contains('tab') ? 'tab' : b.classList.contains('btn-primary') ? 'primary' : 'tap');
     });
     const applySound = () => {
       const on = settings.get('sound', true);
@@ -1395,22 +1447,15 @@
       await Cam.retry();
       if (Cam.state() !== 'on') toast(camHelp(), 6000);
     });
-    let motionAsked = false;
-    document.addEventListener('click', () => {
-      if (motionAsked || document.body.dataset.screen !== 'home' || !Float.needsPermission()) return;
-      motionAsked = true;
-      Float.ask().then((r) => {
-        if (r === 'granted') toast('Motion on. Tilt or shake your phone.');
-        else toast('Motion is off. Allow it in Settings so the buttons float with your phone.', 5000);
-      });
-    }, true);
     document.addEventListener('visibilitychange', () => { setPostmark(); syncCam(); if (!document.hidden && document.body.dataset.screen === 'home') renderHome(); });
     setInterval(() => { if (!document.hidden && document.body.dataset.screen === 'home') renderHome(); }, 60000);
 
     $('btn-home-scan').addEventListener('click', () => { resetScan(); show('scan'); });
-    Float.setActive(() => document.body.dataset.screen === 'home');
-    Float.add($('fab-settings'), { onTap: () => show('settings', 'home'), start: (b) => [b.x1, b.y1] });
-    Float.add($('fab-invite'), { onTap: inviteFriend, start: (b) => [b.x1, b.y1 - 76] });
+    $('menu-btn').addEventListener('click', (e) => { e.stopPropagation(); setMenu(!$('menu').classList.contains('open')); });
+    $('menu-settings').addEventListener('click', () => { setMenu(false); show('settings', 'home'); });
+    $('menu-invite').addEventListener('click', () => { setMenu(false); inviteFriend(); });
+    document.addEventListener('click', (e) => { if (!e.target.closest('#menu-wrap')) setMenu(false); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setMenu(false); });
     $('btn-add').addEventListener('click', openQuest);
     $('btn-limit').addEventListener('click', openLimit);
     $('ld-save').addEventListener('click', saveLimit);

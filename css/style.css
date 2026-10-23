@@ -503,3 +503,30 @@ body[data-screen="home"] .brand { font-size: 22px; }
 .ld-remove { margin-top: 6px; color: var(--ink-mid); }
 .dialog-card .btn { min-height: 50px; }
 .dialog-card .btn:not(.btn-primary) { color: var(--ink); border-color: var(--ink); }
+.home-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 2px; min-height: 30px; }
+.home-row .lbl { white-space: nowrap; }
+.toggles { display: flex; }
+body[data-screen="home"] .brand { font-size: 30px; }
+.menu-wrap { display: none; position: relative; }
+body[data-screen="home"] .menu-wrap { display: block; }
+.dots { width: 44px; height: 44px; margin-right: -10px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--paper); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background-color .2s ease, transform .5s var(--spring); }
+.dots svg { width: 24px; height: 24px; fill: currentColor; transition: transform .55s var(--spring); }
+.dots.open { background: var(--press); }
+.dots.open svg { transform: rotate(90deg) scale(1.1); }
+.menu {
+  position: absolute; top: calc(100% + 6px); right: -6px; z-index: 60; width: 218px; margin: 0; padding: 8px; list-style: none;
+  background: var(--paper); color: var(--ink); border: 2px solid var(--ink); border-radius: 16px; box-shadow: 0 14px 30px rgba(0, 0, 0, .45);
+  transform-origin: calc(100% - 20px) 0; opacity: 0; visibility: hidden; pointer-events: none; transform: translateY(-10px) scale(.55) rotate(-4deg);
+  transition: transform .5s var(--spring), opacity .22s ease, visibility 0s linear .5s;
+}
+.menu::before { content: ""; position: absolute; top: -8px; right: 22px; width: 14px; height: 14px; background: var(--paper); border-left: 2px solid var(--ink); border-top: 2px solid var(--ink); transform: rotate(45deg); border-top-left-radius: 3px; }
+.menu.open { opacity: 1; visibility: visible; pointer-events: auto; transform: none; transition: transform .5s var(--spring), opacity .22s ease, visibility 0s; }
+.menu li { opacity: 0; transform: translateX(16px); transition: opacity .25s ease, transform .45s var(--spring); }
+.menu.open li { opacity: 1; transform: none; }
+.menu.open li:nth-child(1) { transition-delay: .08s; }
+.menu.open li:nth-child(2) { transition-delay: .16s; }
+.menu button { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 48px; padding: 8px 12px; border: 0; border-radius: 10px; background: transparent; color: inherit; font: 600 16px var(--font-body); text-align: left; cursor: pointer; transition: background-color .2s ease, transform .4s var(--spring); }
+.menu button:hover, .menu button:focus-visible { background: var(--hair-paper); transform: translateX(4px); }
+.menu button:active { transform: scale(.96); }
+.menu .ic { width: 24px; height: 24px; }
+.menu .em { width: 24px; font-size: 22px; line-height: 1; text-align: center; font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; }
