@@ -769,7 +769,7 @@
     const now = new Date();
     const h = now.getHours();
     $('home-h').textContent = greeting(h) + (p && p.name ? ', ' + p.name : '');
-    $('home-date').textContent = now.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }).toUpperCase();
+    $('home-date').textContent = now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }).toUpperCase();
     const rows = state.all.filter((r) => r.date === today()).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
     $('home-count').textContent = rows.length ? 'TODAY \u00b7 ' + rows.length + (rows.length === 1 ? ' ENTRY' : ' ENTRIES') : 'TODAY';
     const tb = $('home-totals');

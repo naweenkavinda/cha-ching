@@ -48,6 +48,11 @@
     <div class="top-right">
       <div id="postmark" class="postmark" role="img" aria-label="Today"><span id="pm-mon">OCT</span><span id="pm-day">22</span></div>
       <span id="top-label" class="top-label" hidden></span>
+      <div id="top-toggles" class="toggles" role="group" aria-label="Quick switches">
+        <span id="tg-cheat-wrap" class="swwrap" hidden><button type="button" id="tg-cheat" class="sw" role="switch" aria-checked="false" aria-label="Cheat day"><span class="knob"><span class="em" aria-hidden="true">&#127829;</span></span></button></span>
+        <button type="button" id="tg-theme" class="sw" role="switch" aria-checked="false" aria-label="Light theme"><span class="knob"><svg class="i-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4 6.5 6.5 0 0 0 20 14.5z"/></svg><svg class="i-on" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"/></svg></span></button>
+        <button type="button" id="tg-sound" class="sw" role="switch" aria-checked="true" aria-label="Sound"><span class="knob"><svg class="i-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5zM16 9.5l5 5M21 9.5l-5 5"/></svg><svg class="i-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5zM15.5 9a4 4 0 0 1 0 6"/></svg></span></button>
+      </div>
       <div id="menu-wrap" class="menu-wrap">
         <button type="button" id="menu-btn" class="dots" aria-label="More options" aria-haspopup="menu" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></button>
         <ul id="menu" class="menu" role="menu" aria-label="More options">
@@ -86,14 +91,7 @@
   </section>
 
   <section id="view-home" class="view" aria-labelledby="home-h" hidden>
-    <div class="home-row">
-      <p id="home-date" class="lbl lbl-g"></p>
-        <div id="top-toggles" class="toggles">
-          <span class="tg" id="tg-cheat-wrap" hidden><span class="tg-emoji" aria-hidden="true">&#127829;</span><button type="button" id="tg-cheat" class="ios-switch" role="switch" aria-checked="false" aria-label="Cheat day"></button></span>
-          <span class="tg"><svg class="ic" aria-hidden="true"><use href="#i-sun"/></svg><button type="button" id="tg-theme" class="ios-switch" role="switch" aria-checked="false" aria-label="Light theme"></button></span>
-          <span class="tg"><svg class="ic" aria-hidden="true"><use href="#i-sound"/></svg><button type="button" id="tg-sound" class="ios-switch" role="switch" aria-checked="true" aria-label="Sound"></button></span>
-        </div>
-    </div>
+    <p id="home-date" class="lbl lbl-g"></p>
     <h1 id="home-h" class="big home-h">Hello</h1>
     <div id="home-card" class="stamp paper home-card" role="button" tabindex="0" aria-label="Open the sheet">
       <p id="home-count" class="lbl">TODAY</p>
