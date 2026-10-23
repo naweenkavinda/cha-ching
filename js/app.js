@@ -87,41 +87,45 @@
         } catch (e) { keep = null; }
       }
     }
-    function click(t, dur, freq, gain) {
+    function noiseHit(t, dur, type, freq, q, gain, pow) {
       const n = Math.ceil(ctx.sampleRate * dur);
       const buf = ctx.createBuffer(1, n, ctx.sampleRate);
       const data = buf.getChannelData(0);
-      for (let i = 0; i < n; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 3);
+      for (let i = 0; i < n; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, pow || 3);
       const src = ctx.createBufferSource();
       src.buffer = buf;
-      const bp = ctx.createBiquadFilter();
-      bp.type = 'bandpass';
-      bp.frequency.value = freq;
-      bp.Q.value = 1.1;
+      const f = ctx.createBiquadFilter();
+      f.type = type;
+      f.frequency.value = freq;
+      f.Q.value = q || 1;
       const g = ctx.createGain();
       g.gain.value = gain;
-      src.connect(bp);
-      bp.connect(g);
+      src.connect(f);
+      f.connect(g);
       g.connect(master);
       src.start(t);
+    }
+    function sweepTone(t, f0, f1, dur, gain) {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(f0, t);
+      if (f1 !== f0) o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(gain, t + 0.006);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g);
+      g.connect(master);
+      o.start(t);
+      o.stop(t + dur + 0.03);
     }
     function schedule(kind) {
       const t0 = ctx.currentTime + 0.02;
       if (kind === 'shutter') {
-        click(t0, 0.04, 3400, 1.6);
-        click(t0 + 0.09, 0.07, 1500, 1.3);
-        const o = ctx.createOscillator();
-        const g = ctx.createGain();
-        o.type = 'sine';
-        o.frequency.setValueAtTime(220, t0 + 0.09);
-        o.frequency.exponentialRampToValueAtTime(90, t0 + 0.16);
-        g.gain.setValueAtTime(0.0001, t0 + 0.09);
-        g.gain.exponentialRampToValueAtTime(0.5, t0 + 0.1);
-        g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.18);
-        o.connect(g);
-        g.connect(master);
-        o.start(t0 + 0.09);
-        o.stop(t0 + 0.2);
+        sweepTone(t0, 900, 5200, 0.3, 0.07);
+        noiseHit(t0 + 0.31, 0.02, 'bandpass', 3800, 2, 1.7, 2);
+        noiseHit(t0 + 0.36, 0.03, 'highpass', 3000, 1, 1.4, 2);
+        sweepTone(t0 + 0.37, 1568, 1568, 0.25, 0.12);
         return;
       }
       NOTES[kind].forEach((n) => {
