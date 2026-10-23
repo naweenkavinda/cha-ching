@@ -1386,6 +1386,28 @@
       show(v);
     }));
 
+    const SWIPE = ['home', 'scan', 'expenses'];
+    let sw = null;
+    document.addEventListener('touchstart', (e) => {
+      const t = e.touches[0];
+      const s = document.body.dataset.screen;
+      const ok = e.touches.length === 1 && (s === 'home' || s === 'capture' || s === 'expenses') && $('limit-dialog').hidden &&
+        !(e.target.closest && e.target.closest('input, textarea, select, .menu, .dialog, .toast'));
+      sw = ok ? { x: t.clientX, y: t.clientY, t: Date.now(), v: s === 'capture' ? 'scan' : s } : null;
+    }, { passive: true });
+    document.addEventListener('touchend', (e) => {
+      if (!sw) return;
+      const t = e.changedTouches[0];
+      const dx = t.clientX - sw.x, dy = t.clientY - sw.y, from = sw;
+      sw = null;
+      if (Date.now() - from.t > 700 || Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.6) return;
+      const i = SWIPE.indexOf(from.v) + (dx < 0 ? 1 : -1);
+      if (i < 0 || i >= SWIPE.length) return;
+      if (SWIPE[i] === 'scan' && state.editing) resetScan();
+      show(SWIPE[i]);
+    }, { passive: true });
+    document.addEventListener('touchcancel', () => { sw = null; }, { passive: true });
+
     $('btn-manual').addEventListener('click', () => openForm({}, 'manual'));
     $('btn-first').addEventListener('click', () => { resetScan(); show('scan'); });
     $('form').addEventListener('submit', onSave);
